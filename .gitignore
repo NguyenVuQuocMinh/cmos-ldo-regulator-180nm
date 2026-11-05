@@ -1,0 +1,11 @@
+sim/*
+!sim/README.md
+*.lib
+doc/*.tex
+doc/*.aux
+doc/*.log
+doc/*.out
+doc/*.toc
+doc/figures/
+__pycache__/
+netlists/*.txt

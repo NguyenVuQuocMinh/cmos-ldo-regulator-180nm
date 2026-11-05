@@ -1,0 +1,446 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[a4paper,margin=2.2cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs,array,multirow}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage[siunitx]{circuitikz}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{caption}
+\usepackage{float}
+\captionsetup{font=small,labelfont=bf}
+
+\theoremstyle{plain}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}[proposition]{Lemma}
+\newtheorem{corollary}[proposition]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[proposition]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[proposition]{Remark}
+
+\setlist[enumerate]{itemsep=0.25ex,topsep=0.4ex}
+\newenvironment{steps}{\begin{enumerate}[label=\textit{Step \arabic*.},leftmargin=4.2em]}{\end{enumerate}}
+
+\newcommand{\VIN}{V_{IN}}
+\newcommand{\VOUT}{V_{OUT}}
+\newcommand{\VREF}{V_{REF}}
+\newcommand{\VFB}{V_{FB}}
+\newcommand{\VEA}{V_{EA}}
+\newcommand{\VG}{V_{G}}
+\newcommand{\IL}{I_{L}}
+\newcommand{\CL}{C_{L}}
+\newcommand{\RESR}{R_{ESR}}
+\newcommand{\gmP}{g_{m,P}}
+\newcommand{\gdsP}{g_{ds,P}}
+\newcommand{\VSGP}{V_{SG,P}}
+\newcommand{\VSGB}{V_{SG,B}}
+\newcommand{\Aea}{A_{EA}}
+\newcommand{\Ab}{A_{B}}
+\newcommand{\fu}{f_{u}}
+\newcommand{\KP}{K'}
+\newcommand{\ov}{V_{OV}}
+\newcommand{\VSD}{V_{SD}}
+
+\title{\textbf{A 1.5\,V, 50\,mA PMOS Low-Dropout Regulator in 0.18\,$\mu$m CMOS}\\[0.4ex]
+\large Part 1: Theory and proofs of the design formulas}
+\date{November 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+This note derives, with proofs, every formula used to design the low-dropout (LDO) regulator of
+Fig.~\ref{fig:sch}. It covers the device equations (square law, triode region, weak inversion), the
+loop polarity, the static output equation (which gives accuracy, load and line regulation in one
+line), the pass-device and headroom conditions, the loop gain with its poles and zero, the unity-gain
+frequency and phase margin, the ESR window, the power-supply rejection and the load-step response.
+Part~2 (\texttt{ldo\_hand\_design.pdf}) applies these formulas to a specification to size every
+transistor and checks the result in ngspice.
+\end{abstract}
+
+\tableofcontents
+
+%===================================================================================
+\section{Architecture and notation}\label{sec:spec}
+
+\paragraph{Architecture (Fig.~\ref{fig:sch}).}
+\begin{itemize}[itemsep=0.1ex]
+\item \emph{Pass device} $M_P$: a PMOS. A PMOS can work with $\VIN - \VOUT$ down to its saturation
+voltage, which is what makes a low dropout possible.
+\item \emph{Feedback divider} $R_1, R_2$: it feeds back the fraction $\beta = R_2/(R_1+R_2)$ of $\VOUT$.
+\item \emph{Error amplifier} (EA) $M_1$--$M_5$: a five-transistor OTA with a PMOS input pair, which works at
+$\VREF = 0.6$\,V. An NMOS pair would need its input common mode above $V_{GS}+V_{DS,sat}\approx 0.75$\,V.
+\item \emph{Buffer} $M_B$: a PMOS source follower with its bulk tied to its source, biased by $M_{BS}$. It
+drives the large gate capacitance of $M_P$ from a low impedance (Section~\ref{sec:poles}).
+\item \emph{Load}: the off-chip capacitor $\CL$ with its series resistance $\RESR$. The load current is an
+ideal current sink.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{\input{schematic.tex}}
+\caption{LDO schematic. $M_1$ (gate $\VFB$) sits on the diode side of the mirror, $M_2$ (gate $\VREF$) on
+the output side; Lemma~\ref{lem:polarity} shows that this gives negative feedback. Bulk of every
+PMOS is $\VIN$ except $M_1$, $M_2$ (tail node) and $M_B$ (its source).}
+\label{fig:sch}
+\end{figure}
+
+%===================================================================================
+\section{Device equations}\label{sec:models}
+
+PMOS voltages are written as positive magnitudes ($V_{SG}$, $V_{SD}$, $|V_{TH}|$). The overdrive is
+$\ov = V_{GS}-V_{TH}$ (NMOS) or $V_{SG}-|V_{TH}|$ (PMOS), and $\KP = \mu C_{ox}$.
+
+\begin{lemma}[Square law and its small-signal parameters]\label{lem:sq}
+In saturation ($V_{DS} \ge \ov > 0$),
+\begin{equation}
+I_D = \tfrac12 \KP \tfrac{W}{L}\,\ov^2\,(1+\lambda V_{DS}). \label{eq:sat}
+\end{equation}
+Neglecting $\lambda V_{DS}$ against 1 in the result,
+\begin{equation}
+g_m = \sqrt{2\KP\tfrac{W}{L} I_D} = \frac{2 I_D}{\ov}, \qquad g_{ds} = \lambda I_D, \qquad r_o = \frac{1}{\lambda I_D}. \label{eq:gm}
+\end{equation}
+\end{lemma}
+\begin{proof}
+\begin{steps}
+\item $g_m = \partial I_D/\partial V_{GS} = \KP (W/L)\,\ov$, by differentiating \eqref{eq:sat} with $\lambda V_{DS} \ll 1$.
+\item From \eqref{eq:sat}, $\ov = \sqrt{2 I_D/(\KP W/L)}$. Substituting into Step 1 gives $g_m = \sqrt{2\KP (W/L) I_D}$.
+\item Dividing $g_m = \KP (W/L)\ov$ by $I_D = \tfrac12\KP(W/L)\ov^2$ gives $g_m/I_D = 2/\ov$.
+\item $g_{ds} = \partial I_D/\partial V_{DS} = \tfrac12\KP\tfrac{W}{L}\ov^2\lambda = \lambda I_D/(1+\lambda V_{DS}) \approx \lambda I_D$. \qedhere
+\end{steps}
+\end{proof}
+
+\begin{lemma}[Triode region]\label{lem:tri}
+For $0 \le V_{DS} \le \ov$, $I_D = \KP\frac{W}{L}\big(\ov V_{DS} - \tfrac12 V_{DS}^2\big)$, so
+$g_m = \KP\frac{W}{L}V_{DS}$ and $g_{ds} = \KP\frac{W}{L}(\ov - V_{DS})$. In particular
+\begin{equation}
+\frac{g_{ds}}{g_m} = \frac{\ov - V_{DS}}{V_{DS}}, \label{eq:tri_ratio}
+\end{equation}
+which grows without bound as $V_{DS}$ falls below $\ov$.
+\end{lemma}
+\begin{proof}
+Differentiate $I_D$ with respect to $V_{GS}$ (only $\ov$ depends on it) and with respect to $V_{DS}$,
+then divide the two results.
+\end{proof}
+
+\begin{lemma}[Weak inversion]\label{lem:wi}
+For $V_{GS}$ below $V_{TH}$, $I_D = I_0\exp\!\big(V_{GS}/(nV_T)\big)$ with slope factor $n \approx 1.3$--1.5
+and $V_T = kT/q$. Then $g_m = I_D/(nV_T)$.
+\end{lemma}
+\begin{proof}
+$g_m = \partial I_D/\partial V_{GS} = I_0 e^{V_{GS}/(nV_T)}/(nV_T) = I_D/(nV_T)$.
+\end{proof}
+
+%===================================================================================
+\section{Large-signal (DC) analysis}\label{sec:dc}
+
+\subsection{Loop polarity}
+\begin{lemma}[Negative feedback]\label{lem:polarity}
+With $\VFB$ on $M_1$ (diode side of the mirror) and $\VREF$ on $M_2$, a rise of $\VOUT$ lowers the
+pass-device current.
+\end{lemma}
+\begin{proof}
+\begin{steps}
+\item If $\VOUT$ rises, $\VFB = \beta\VOUT$ rises.
+\item Then $V_{SG1}$ falls, so $I_{D1}$ falls, while $I_{D2} = I_{tail} - I_{D1}$ rises.
+\item The mirror makes $M_4$ sink a copy of $I_{D1}$. The output node therefore receives $I_{D2}$ and loses
+only $I_{D1} < I_{D2}$, so $\VEA$ rises.
+\item The source follower gives $\VG = \VEA + \VSGB$, so $\VG$ rises.
+\item $\VSGP = \VIN - \VG$ falls, so the current of $M_P$ falls, which opposes the rise of $\VOUT$. \qedhere
+\end{steps}
+\end{proof}
+
+\subsection{The static output equation}
+Linearise the EA around the balanced point. When $\VFB = \VREF$, the two halves carry equal currents,
+so $V_{DS4} = V_{DS3} = V_{GS3}$ and $\VEA = V_{GS3}$. Writing $\Aea$ for the EA gain and using
+Lemma~\ref{lem:polarity} for the sign gives
+\begin{equation}
+\VEA = V_{GS3} + \Aea\,(\VFB - \VREF). \label{eq:ea_lin}
+\end{equation}
+
+\begin{proposition}[Static output equation]\label{prop:static}
+Let $\VSGP(I)$ be the source--gate voltage that makes $M_P$ carry $I = \IL + I_{div}$. Then
+\begin{equation}
+\boxed{\;\VOUT = \frac{\VREF}{\beta} + \frac{\varepsilon}{\beta \Aea},\qquad
+\varepsilon \equiv \VIN - \VSGP(\IL + I_{div}) - \VSGB - V_{GS3}.\;} \label{eq:static}
+\end{equation}
+\end{proposition}
+\begin{proof}
+\begin{steps}
+\item The gate of $M_P$ sits at $\VG = \VIN - \VSGP$, because $M_P$ must carry $\IL + I_{div}$.
+\item The follower gives $\VEA = \VG - \VSGB = \VIN - \VSGP - \VSGB$.
+\item Set this equal to \eqref{eq:ea_lin} with $\VFB = \beta\VOUT$: $\;\VIN - \VSGP - \VSGB = V_{GS3} + \Aea(\beta\VOUT - \VREF)$.
+\item Solve for $\VOUT$: $\;\beta\Aea\VOUT = \Aea\VREF + (\VIN - \VSGP - \VSGB - V_{GS3})$.
+\item Divide by $\beta\Aea$. \qedhere
+\end{steps}
+\end{proof}
+
+Proposition~\ref{prop:static} contains three specifications at once.
+\begin{corollary}\label{cor:static}
+\begin{enumerate}[label=(\alph*)]
+\item \emph{Ideal value:} as $\Aea\to\infty$, $\VOUT \to \VREF/\beta = \VREF(1 + R_1/R_2)$.
+\item \emph{Load regulation:} only $\VSGP$ depends on $\IL$, so
+$\Delta\VOUT = -\Delta\VSGP/(\beta\Aea)$ between two loads.
+\item \emph{Line regulation:} with $\VSGP$, $\VSGB$, $V_{GS3}$ fixed by their currents,
+$\partial\VOUT/\partial\VIN = 1/(\beta\Aea)$.
+\item \emph{Systematic offset:} $\varepsilon$ is the difference $V_{DS4} - V_{DS3}$ that the loop has to
+create. The output error at a given load is $\varepsilon/(\beta\Aea)$, and it changes sign
+between light and heavy load.
+\end{enumerate}
+When the follower gain $\Ab < 1$ is kept (Section~\ref{sec:poles}), $\Aea$ becomes $\Aea\Ab$ in (b) and (c).
+\end{corollary}
+
+\subsection{Pass device: saturation and dropout}
+\begin{proposition}[Pass-device sizing]\label{prop:pass}
+\begin{enumerate}[label=(\alph*)]
+\item $M_P$ stays saturated at $\IL = I_{max}$ and $\VIN = V_{IN,nom}$ if
+\begin{equation}
+\frac{W}{L} \ge \frac{2 I_{max}}{\KP\,(V_{IN,nom}-\VOUT)^2}. \label{eq:wl_sat}
+\end{equation}
+\item At $\VSD = V_{DO}$ (triode), carrying $I_{max}$ needs the overdrive
+\begin{equation}
+\ov = \frac{I_{max}}{\KP\frac{W}{L} V_{DO}} + \frac{V_{DO}}{2}. \label{eq:vov_do}
+\end{equation}
+The dropout specification is met if the drive chain can pull $\VG$ down to $\VIN - |V_{TH}| - \ov$.
+\end{enumerate}
+\end{proposition}
+\begin{proof}
+\begin{steps}
+\item (a) Saturation needs $\VSD \ge \ov$, and $\VSD = V_{IN,nom}-\VOUT$.
+\item Use \eqref{eq:sat} at the edge $\ov = \VSD$: $I_{max} \le \tfrac12\KP\frac WL(V_{IN,nom}-\VOUT)^2$. Rearranging gives \eqref{eq:wl_sat}.
+\item (b) Lemma~\ref{lem:tri} at $V_{DS} = V_{DO}$: $I_{max} = \KP\frac WL(\ov V_{DO} - \tfrac12V_{DO}^2)$.
+\item Divide by $\KP\frac WL V_{DO}$ and move $V_{DO}/2$ to the right-hand side. This is \eqref{eq:vov_do}. \qedhere
+\end{steps}
+\end{proof}
+
+\subsection{Headroom window of the error-amplifier output}\label{sec:headroom}
+\begin{proposition}[Buffer $V_{SG}$ window]\label{prop:window}
+$M_2$ and $M_4$ stay saturated over the whole input and load range if
+\begin{equation}
+\underbrace{V_{IN,max} - \VSGP(I_{min}) - \VREF - |V_{TH,p}|}_{\text{lower bound}}
+\;\le\; \VSGB \;\le\;
+\underbrace{V_{IN,min} - \VSGP^{DO}(I_{max}) - V_{OV4}}_{\text{upper bound}}, \label{eq:window}
+\end{equation}
+where $\VSGP^{DO}$ is the pass-device $V_{SG}$ at the dropout point.
+\end{proposition}
+\begin{proof}
+\begin{steps}
+\item $M_2$ saturated: $V_{SD2} \ge V_{OV2}$, i.e.\ $V_{tail} - \VEA \ge V_{SG2} - |V_{TH,p}|$.
+\item The tail sits one $V_{SG}$ above the gate of $M_2$: $V_{tail} = \VREF + V_{SG2}$. Substitute: $\VEA \le \VREF + |V_{TH,p}|$.
+\item $M_4$ saturated: $V_{DS4} = \VEA \ge V_{OV4}$.
+\item From the proof of Proposition~\ref{prop:static}, $\VEA = \VIN - \VSGP - \VSGB$.
+\item $\VEA$ is largest at $V_{IN,max}$ and light load (small $\VSGP$). Insert into Step 2 and solve for $\VSGB$: this is the lower bound.
+\item $\VEA$ is smallest at $V_{IN,min}$ and full load. Insert into Step 3 and solve for $\VSGB$: this is the upper bound. \qedhere
+\end{steps}
+\end{proof}
+
+%===================================================================================
+\section{Small-signal loop analysis}\label{sec:loop}
+
+\subsection{Loop gain}
+\begin{proposition}[Loop gain]\label{prop:T}
+Break the loop at the gate of $M_1$ and inject $v_t$ there. Then
+\begin{equation}
+T(s) \equiv -\frac{v_{fb}}{v_t} = \beta\,\Aea(s)\,\Ab(s)\,\gmP\,Z_o(s),\qquad
+Z_o(s) = R_o \,\Big\|\, \Big(\RESR + \frac{1}{s\CL}\Big),\quad R_o = r_{o,P}\,\|\,(R_1+R_2). \label{eq:T}
+\end{equation}
+\end{proposition}
+\begin{proof}
+\begin{steps}
+\item The gate of $M_1$ draws no current, so breaking the loop there leaves the divider unloaded and the break is exact.
+\item EA: $v_{ea} = \Aea(s) v_t$ (Lemma~\ref{lem:ota} below; the sign is positive by Lemma~\ref{lem:polarity}).
+\item Buffer: $v_g = \Ab(s) v_{ea}$ (Lemma~\ref{lem:sf}).
+\item Pass device, with $v_{in} = 0$: the drain current into the output node is $i = \gmP v_{sg} = -\gmP v_g$.
+\item Output node: $v_{out} = i\,Z_o$. Here $Z_o$ is the drain resistance, the divider and the capacitor branch in parallel; the ideal current-sink load adds nothing.
+\item Divider: $v_{fb} = \beta v_{out} = -\beta\gmP Z_o\Ab\Aea v_t$.
+\item Divide by $-v_t$. \qedhere
+\end{steps}
+\end{proof}
+
+\begin{lemma}[Five-transistor OTA]\label{lem:ota}
+At low frequency, $\Aea = \dfrac{g_{m1}}{g_{ds2}+g_{ds4}}$, and the output pole is
+$p_{EA} = \dfrac{1}{2\pi R_{o,EA}C_{EA}}$ with $R_{o,EA} = 1/(g_{ds2}+g_{ds4})$, where $C_{EA}$ is the total
+capacitance at the EA output.
+\end{lemma}
+\begin{proof}
+\begin{steps}
+\item Ideal tail: $i_1 + i_2 = 0$, where $i_k$ is the small-signal drain current of $M_k$ toward the mirror.
+\item $i_1 = -g_m(v_{fb} - v_x)$ and $i_2 = -g_m(v_{ref} - v_x)$, with $v_x$ the tail voltage (PMOS: a higher gate means less current).
+\item Adding the two and using Step 1 gives $v_x = (v_{fb}+v_{ref})/2$, so $i_1 = -g_m v_d/2$ with $v_d = v_{fb}-v_{ref}$.
+\item The mirror sinks $i_1$ at the output, and $M_2$ sources $i_2 = -i_1$. The net current into the output node is $i_2 - i_1 = -2i_1 = g_m v_d$.
+\item This current flows into $g_{ds2}+g_{ds4}$ in parallel with $sC_{EA}$: $v_{ea} = g_m v_d/(g_{ds2}+g_{ds4}+sC_{EA})$.
+\item At $s = 0$ this is $\Aea$. The single pole sits at $(g_{ds2}+g_{ds4})/(2\pi C_{EA})$. The mirror pole $g_{m3}/C_{d1}$ is far higher and is neglected. \qedhere
+\end{steps}
+\end{proof}
+
+\begin{lemma}[PMOS source follower]\label{lem:sf}
+With the bulk tied to the source and $C_G$ the load capacitance at $\VG$,
+\begin{equation}
+\Ab(s) = \frac{g_{mB}}{g_{out} + sC_G},\qquad g_{out} = g_{mB}+g_{dsB}+g_{ds,BS},\qquad
+\Ab = \frac{g_{mB}}{g_{out}},\quad p_B = \frac{g_{out}}{2\pi C_G}. \label{eq:sf}
+\end{equation}
+\end{lemma}
+\begin{proof}
+\begin{steps}
+\item $M_B$ carries $i = g_{mB}v_{sg} + g_{dsB}v_{sd} = g_{mB}(v_g - v_{ea}) + g_{dsB}v_g$ from $\VG$ to ground. No $g_{mb}$ term appears because $v_{bs} = 0$.
+\item $M_{BS}$ (gate fixed) delivers $-g_{ds,BS}v_g$ into the node.
+\item KCL at $\VG$: $-g_{ds,BS}v_g = g_{mB}(v_g-v_{ea}) + g_{dsB}v_g + sC_Gv_g$.
+\item Collect the $v_g$ terms: $v_g(g_{out}+sC_G) = g_{mB}v_{ea}$. \qedhere
+\end{steps}
+\end{proof}
+
+\begin{remark}[Which capacitance loads $\VG$]
+$C_G = C_{gs,P} + C_{gd,P}$, with no Miller multiplication of $C_{gd,P}$. The reason is that at the
+frequencies where $p_B$ matters (near $\fu$), $\CL$ already holds the drain of $M_P$ at AC ground, so the
+gain from gate to drain is about zero. In saturation, $C_{gs} \approx \tfrac23 WLC_{ox} + WC_{ov}$ and
+$C_{gd} \approx WC_{ov}$.
+\end{remark}
+
+\subsection{Poles, zero and unity-gain frequency}\label{sec:poles}
+\begin{lemma}[Output pole and ESR zero]\label{lem:zo}
+\begin{equation}
+Z_o(s) = R_o\,\frac{1 + s\RESR\CL}{1 + s(R_o+\RESR)\CL},\qquad
+p_o = \frac{1}{2\pi(R_o+\RESR)\CL},\qquad z_{ESR} = \frac{1}{2\pi\RESR\CL}. \label{eq:zo}
+\end{equation}
+\end{lemma}
+\begin{proof}
+$Z_o = R_o(\RESR + 1/s\CL)/(R_o + \RESR + 1/s\CL)$. Multiply the numerator and the denominator by $s\CL$.
+\end{proof}
+
+\begin{proposition}[Unity-gain frequency]\label{prop:fu}
+If $p_o \ll \fu \ll z_{ESR}, p_B, p_{EA}$, then
+\begin{equation}
+\boxed{\;\fu \approx \frac{G\,\gmP}{2\pi\CL},\qquad G \equiv \beta\Aea\Ab,\;} \label{eq:fu}
+\end{equation}
+independent of $R_o$. Since $\gmP$ rises with $\IL$, the highest $\fu$ occurs at full load.
+\end{proposition}
+\begin{proof}
+\begin{steps}
+\item For $f \gg p_o$, $|s\CL| \gg 1/R_o$; for $f \ll z_{ESR}$, $\RESR \ll 1/|s\CL|$. Hence $Z_o \approx 1/(s\CL)$.
+\item For $f \ll p_B, p_{EA}$, $\Aea(s)\Ab(s) \approx \Aea\Ab$.
+\item By \eqref{eq:T}, $|T(j2\pi f)| \approx G\gmP/(2\pi f\CL)$. Setting this equal to 1 gives \eqref{eq:fu}. \qedhere
+\end{steps}
+\end{proof}
+
+\begin{proposition}[Phase margin]\label{prop:pm}
+Under the same conditions,
+\begin{equation}
+\mathrm{PM} \approx 90^\circ - \arctan\frac{\fu}{p_B} - \arctan\frac{\fu}{p_{EA}} + \arctan\frac{\fu}{z_{ESR}}. \label{eq:pm}
+\end{equation}
+\end{proposition}
+\begin{proof}
+\begin{steps}
+\item The phase of $T$ is the sum of the phases of its factors: $-\arctan(f/p_o) - \arctan(f/p_B) - \arctan(f/p_{EA}) + \arctan(f/z_{ESR})$.
+\item At $f = \fu \gg p_o$, the first term is $-90^\circ + \arctan(p_o/\fu) \approx -90^\circ$.
+\item $\mathrm{PM} = 180^\circ + \angle T(\fu)$. \qedhere
+\end{steps}
+\end{proof}
+
+\begin{proposition}[The EA pole does not depend on the EA current]\label{prop:pea}
+Hold $V_{OV1}$ fixed and size $M_1$, $M_2$ by \eqref{eq:sat}. If $C_{EA}$ is dominated by the drain
+capacitance of $M_2$, with $c'$ its value per unit width, then
+\begin{equation}
+p_{EA} \approx \frac{(\lambda_p+\lambda_n)\,\KP\,V_{OV1}^2}{4\pi c' L_{12}},\qquad
+\Aea\, p_{EA} \approx \frac{\KP\,V_{OV1}}{2\pi c'L_{12}}. \label{eq:pea}
+\end{equation}
+\end{proposition}
+\begin{proof}
+\begin{steps}
+\item By Lemma~\ref{lem:ota}, $p_{EA} = (\lambda_p+\lambda_n)I_{D1}/(2\pi C_{EA})$.
+\item By \eqref{eq:sat}, $W_{12} = 2I_{D1}L_{12}/(\KP V_{OV1}^2)$, so $C_{EA} \approx c'W_{12} = 2c'I_{D1}L_{12}/(\KP V_{OV1}^2)$.
+\item Substitute Step 2 into Step 1: $I_{D1}$ cancels, which gives the first formula.
+\item Multiply by $\Aea = (2/V_{OV1})/(\lambda_p+\lambda_n)$ (Lemmas~\ref{lem:sq} and~\ref{lem:ota}). This gives the second. \qedhere
+\end{steps}
+\end{proof}
+\noindent So the EA current is free; it only sets slew rate and power. Gain and bandwidth trade
+through $V_{OV1}$ and $L$. A longer $L$ lowers $\lambda$ (more gain) but also lowers $p_{EA}$, which is
+the mechanism behind the design iterations in Part~2.
+
+\begin{proposition}[ESR window]\label{prop:esr}
+For $f \gg z_{ESR}$, $Z_o \to R_o\|\RESR \approx \RESR$ and $|T| \to G\gmP\RESR$. The crossover
+stays on the single-pole slope if
+\begin{equation}
+\RESR < \frac{1}{G\,\gmP}. \label{eq:esr}
+\end{equation}
+This condition is sufficient, not necessary. A moderate $\RESR$ adds phase lead
+(the $+\arctan$ term in \eqref{eq:pm}). A large $\RESR$ flattens $|T|$ above $z_{ESR}$ and moves $\fu$
+up toward $p_B$ and $p_{EA}$, so the PM collapses.
+\end{proposition}
+\begin{proof}
+\begin{steps}
+\item By \eqref{eq:zo}, $Z_o(s)\to R_o\RESR/(R_o+\RESR)$ as $s\to\infty$, which is about $\RESR$ for $\RESR \ll R_o$.
+\item Between $z_{ESR}$ and $\min(p_B,p_{EA})$, $|T| \approx G\gmP\RESR$, which is flat.
+\item If that plateau is below 1, $|T|$ crossed 1 before $z_{ESR}$, on the $-20$\,dB/dec slope where Proposition~\ref{prop:pm} applies. \qedhere
+\end{steps}
+\end{proof}
+
+\begin{corollary}[The central trade-off]\label{cor:tradeoff}
+With the gate of $M_P$ referred to ground (next section), the low-frequency PSRR is about $G$. By
+\eqref{eq:fu},
+\begin{equation}
+\fu \approx \mathrm{PSRR}_{DC}\cdot\frac{\gmP}{2\pi\CL}.
+\end{equation}
+Each extra dB of PSRR raises $\fu$ by the same factor, and $\fu$ must stay below $p_B$ and $p_{EA}$.
+With a single-stage EA, this is the constraint that sets the achievable PSRR.
+\end{corollary}
+
+%===================================================================================
+\section{Regulation, power-supply rejection and transient}\label{sec:reg}
+
+\begin{proposition}[Power-supply rejection]\label{prop:psrr}
+Treat $\VG$ as referred to ground: the EA output is set by the NMOS mirror, and $M_{BS}$ is a high
+impedance. Then
+\begin{equation}
+\frac{v_{out}}{v_{in}}(s) = \frac{(\gmP + \gdsP)\,Z_o(s)}{1 + T(s)},\qquad
+\mathrm{PSRR}_{DC} \approx \frac{G}{1 + \gdsP/\gmP}\quad (T_0 \gg 1). \label{eq:psrr}
+\end{equation}
+\end{proposition}
+\begin{proof}
+\begin{steps}
+\item The current of $M_P$ into the output is $\gmP(v_{in}-v_g) + \gdsP(v_{in}-v_{out})$.
+\item Loop: $v_g = \Ab\Aea\beta v_{out}$ (Proposition~\ref{prop:T}, steps 2--3 and 6).
+\item Output node: $v_{out}/Z_o' = \gmP(v_{in} - G v_{out}) + \gdsP(v_{in}-v_{out})$, where $Z_o'$ excludes $r_{o,P}$.
+\item Move the $\gdsP v_{out}$ term to the left. Since $1/Z_o' + \gdsP = 1/Z_o$: $v_{out}(1/Z_o + \gmP G) = (\gmP+\gdsP)v_{in}$.
+\item Multiply by $Z_o$ and use $T = G\gmP Z_o$. This gives the first formula.
+\item At DC with $T_0 = G\gmP R_o \gg 1$: $v_{out}/v_{in} \approx (\gmP+\gdsP)/(G\gmP)$. Invert. \qedhere
+\end{steps}
+\end{proof}
+
+\begin{corollary}[PSRR near dropout]\label{cor:dropout_psrr}
+In saturation $\gdsP/\gmP = \lambda\ov/2$ is small and $\mathrm{PSRR}_{DC}\approx G$. Near dropout, $M_P$
+enters the triode region, and by \eqref{eq:tri_ratio} $\gdsP/\gmP = (\ov-V_{SD})/V_{SD}$ grows. The PSRR
+then drops even though the EA is unchanged. The line regulation is the DC value of \eqref{eq:psrr}, so
+it degrades in the same way.
+\end{corollary}
+
+\begin{proposition}[Load-step response]\label{prop:step}
+On the single-pole part of the loop ($p_o \ll f \ll p_B, p_{EA}$, $\RESR\to0$), the closed-loop
+output impedance is $Z_{cl}(s) = Z_o/(1+T) \approx 1/\big(\CL(s+\omega_u)\big)$ with $\omega_u = 2\pi\fu$.
+A load step $\Delta I$ therefore gives
+\begin{equation}
+\Delta\VOUT(t) = -\frac{\Delta I}{\CL\,\omega_u}\big(1 - e^{-\omega_u t}\big), \label{eq:step}
+\end{equation}
+a monotone settling with time constant $\tau = 1/\omega_u = \CL/(G\gmP)$ and no overshoot.
+\end{proposition}
+\begin{proof}
+\begin{steps}
+\item In this range, $Z_o \approx 1/(s\CL)$ and $T \approx \omega_u/s$ (Proposition~\ref{prop:fu}).
+\item $Z_{cl} = \dfrac{1/(s\CL)}{1+\omega_u/s} = \dfrac{1}{\CL(s+\omega_u)}$.
+\item A step $-\Delta I/s$ (current drawn from the output) gives $\Delta V(s) = -\Delta I/\big(s\CL(s+\omega_u)\big)$.
+\item Partial fractions: $\dfrac{1}{s(s+\omega_u)} = \dfrac{1}{\omega_u}\Big(\dfrac1s - \dfrac{1}{s+\omega_u}\Big)$. The inverse transform gives \eqref{eq:step}. \qedhere
+\end{steps}
+\end{proof}
+
+\begin{remark}[Large steps]
+For the 0.1\,$\leftrightarrow$\,50\,mA step, $\gmP$ itself changes by two orders of magnitude, so
+\eqref{eq:step} is used piecewise. The final level comes from Corollary~\ref{cor:static}(b). The settling
+after a load \emph{release} is slow, because it ends at light load where $\omega_u$ is small:
+$\tau_{light} = 1/(2\pi f_{u,light})$. The gate must also slew up by $\Delta\VSGP$, but only with the bias
+current of $M_{BS}$, which takes $t_{slew} = C_G\Delta\VSGP/I_B$. In Part~2 this is below 0.1\,$\mu$s, far shorter than $\tau_{light}$.
+\end{remark}
+
+
+\end{document}
