@@ -3,11 +3,13 @@
 A 1.5 V, 50 mA PMOS low-dropout (LDO) regulator designed from a written specification. Every formula
 used in the design is proved, every transistor is sized by hand, and the result is checked in ngspice.
 
-![LDO schematic](figures/schematic.png)
+![LDO schematic in Electric](figures/schematic_electric.png)
 
-The figure above is the drawing used in the PDFs. The design source is the Electric schematic
-[`schematic/ldo180.jelib`](schematic/ldo180.jelib) (cell `ldo180{sch}`); its netlist matches the simulated
-circuit device by device (see [Schematic in Electric](#schematic-in-electric)).
+Schematic of the final design (v3) in the Electric VLSI editor, cell `ldo180{sch}` of
+[`schematic/ldo180.jelib`](schematic/ldo180.jelib). Labels give W/L in µm (×300 = number of pass-device
+fingers). Its netlist matches the simulated circuit device by device (see
+[Schematic in Electric](#schematic-in-electric)). The PDFs use a redrawn version of the same circuit
+([`figures/schematic.png`](figures/schematic.png)).
 
 ## Documents
 

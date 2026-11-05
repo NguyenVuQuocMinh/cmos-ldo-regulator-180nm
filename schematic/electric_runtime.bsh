@@ -125,7 +125,9 @@ while ((line = br.readLine()) != null) {
         // optional orientation: <angle in tenths of a degree> <flipX 0|1> <flipY 0|1>
         Orientation or = Orientation.IDENT;
         if (t.length >= 10) or = Orientation.fromJava(Integer.parseInt(t[7]), t[8].equals("1"), t[9].equals("1"));
-        NodeInst ni = NodeInst.makeInstance(pn, ep, new Point2D.Double(Double.parseDouble(t[3]), Double.parseDouble(t[4])), w, h, cur, or, t[1]);
+        // wire pins get no user name (a user name would be drawn next to every pin)
+        String nname = t[2].equals("sch:Wire_Pin") ? null : t[1];
+        NodeInst ni = NodeInst.makeInstance(pn, ep, new Point2D.Double(Double.parseDouble(t[3]), Double.parseDouble(t[4])), w, h, cur, or, nname);
         if (ni == null) { System.out.println("ERR line " + lineNo + " node failed " + t[1]); nerr++; continue; }
         ids.put(t[1], ni);
     } else if (op.equals("FN")) {
@@ -169,6 +171,13 @@ while ((line = br.readLine()) != null) {
         String aname = t.length >= 12 ? t[11] : null;
         ArcInst arc = ArcInst.makeInstanceBase(ap, ep, Double.parseDouble(t[2]), a, b, pa, pb, aname);
         if (arc == null) { System.out.println("ERR line " + lineNo + " arc failed: " + line); nerr++; }
+        // optional tokens 13-14: offset of the net label from the arc centre (beside the wire)
+        else if (aname != null && t.length >= 14) {
+            TextDescriptor td = arc.getTextDescriptor(ArcInst.ARC_NAME)
+                .withOff(Double.parseDouble(t[12]), Double.parseDouble(t[13]))
+                .withPos(AbstractTextDescriptor.Position.CENT);
+            arc.setTextDescriptor(ArcInst.ARC_NAME, td);
+        }
     } else if (op.equals("E")) {
         PortInst pi = port(t[2], t[3]);
         PortCharacteristic pc = PortCharacteristic.BIDIR;
@@ -185,6 +194,23 @@ while ((line = br.readLine()) != null) {
         NodeInst ni = (NodeInst) ids.get(t[1]);
         Object v = (t.length >= 5 && t[4].equals("num")) ? (Object) new Double(Double.parseDouble(t[3])) : (Object) t[3];
         ni.newDisplayVar(com.sun.electric.database.variable.Variable.newKey(t[2]), v, ep);
+    } else if (op.equals("NV")) {
+        // NV <id> <key> <number>: numeric attribute, not drawn
+        NodeInst ni = (NodeInst) ids.get(t[1]);
+        ni.newVar(com.sun.electric.database.variable.Variable.newKey(t[2]), new Double(Double.parseDouble(t[3])), ep);
+    } else if (op.equals("HIDENAME")) {
+        // HIDENAME <id>: keep the node name (used by the netlist) but do not draw it
+        NodeInst ni = (NodeInst) ids.get(t[1]);
+        ni.setTextDescriptor(NodeInst.NODE_NAME, ni.getTextDescriptor(NodeInst.NODE_NAME).withDisplay(false));
+    } else if (op.equals("TXT")) {
+        // TXT <x> <y> <relative size> <text ...>: free annotation text, centred on (x, y)
+        StringBuffer sb = new StringBuffer();
+        for (int i = 4; i < t.length; i++) { if (i > 4) sb.append(" "); sb.append(t[i]); }
+        NodeInst ni = NodeInst.makeInstance(com.sun.electric.technology.technologies.Generic.tech().invisiblePinNode, ep,
+            new Point2D.Double(Double.parseDouble(t[1]), Double.parseDouble(t[2])), 0, 0, cur);
+        TextDescriptor td = ep.getAnnotationTextDescriptor().withDisplay(true)
+            .withPos(AbstractTextDescriptor.Position.CENT).withRelSize(Double.parseDouble(t[3]));
+        ni.newVar(com.sun.electric.technology.technologies.Artwork.ART_MESSAGE, sb.toString(), td);
     } else if (op.equals("SPICE")) {
         // SPICE <cell{view}> <path>: Electric's own SPICE writer, sizes in schematic units
         com.sun.electric.database.hierarchy.EDatabase.setClientDatabase(com.sun.electric.database.hierarchy.EDatabase.serverDatabase());

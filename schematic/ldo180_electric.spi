@@ -1,7 +1,7 @@
 *** SPICE deck for cell ldo180{sch} from library ldo180
-*** Created on Thu Nov 05, 2026 21:43:20
-*** Last revised on Thu Nov 05, 2026 21:43:20
-*** Written on Thu Nov 05, 2026 21:43:20 by Electric VLSI Design System, version 9.08
+*** Created on Thu Nov 05, 2026 22:22:50
+*** Last revised on Thu Nov 05, 2026 22:22:50
+*** Written on Thu Nov 05, 2026 22:22:50 by Electric VLSI Design System, version 9.08
 *** Layout tech: mocmos, foundry MOSIS
 *** UC SPICE *** , MIN_RESIST 4.0, MIN_CAPAC 0.1FF
 *** Lambda Conversion ***
