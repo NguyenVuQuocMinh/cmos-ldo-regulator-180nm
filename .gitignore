@@ -2,6 +2,7 @@ sim/*
 !sim/README.md
 *.lib
 doc/*.tex
+!doc/schematic.tex
 doc/*.aux
 doc/*.log
 doc/*.out

@@ -1,0 +1,79 @@
+% LDO schematic (circuitikz); \input by ldo_theory.tex and buildable alone
+\begin{circuitikz}[scale=0.9, transform shape, american]
+  \def\VIN{6.4}
+  % ------------------------------------------------ rails
+  \draw (-0.4,\VIN) -- (15.4,\VIN) node[right] {$V_{IN}$};
+  \draw (-0.4,0) -- (15.4,0);
+  \node[ground] at (7.6,0) {};
+
+  % ------------------------------------------------ bias: IREF into diode MBIAS (gate on the right)
+  \node[pmos, xscale=-1] (mbias) at (0,5.3) {};
+  \node[left] at (-0.2,5.3) {\scriptsize $M_{BIAS}$};
+  \draw (mbias.S) -- (0,\VIN);
+  \draw (mbias.D) -- (0,3.4) to[american current source, l_={$I_{REF}$}] (0,0);
+  \draw (0,4.3) node[circ] {} -- (1.25,4.3) |- (mbias.G);
+  \draw (mbias.G) -- (2.3,5.3) node[circ] (pb) {};
+  \node[below] at (1.75,5.3) {\scriptsize $V_{PB}$};
+
+  % ------------------------------------------------ tail M5
+  \node[pmos] (m5) at (3.2,5.3) {};
+  \node[right] at (3.3,5.55) {\scriptsize $M_5$};
+  \draw (m5.S) -- (3.2,\VIN);
+  \draw (pb) -- (m5.G);
+  \draw (m5.D) -- (3.2,4.35);
+
+  % ------------------------------------------------ input pair: M1 gate = V_FB (left), M2 gate = V_REF (right)
+  \draw (2.2,4.35) -- (4.2,4.35);
+  \node[right] at (3.2,4.15) {\scriptsize tail};
+  \node[pmos] (m1) at (2.2,3.55) {};
+  \node[pmos, xscale=-1] (m2) at (4.2,3.55) {};
+  \draw (m1.S) -- (2.2,4.35);
+  \draw (m2.S) -- (4.2,4.35);
+  \node[right] at (2.3,3.8) {\scriptsize $M_1$};
+  \node[left] at (4.1,3.8) {\scriptsize $M_2$};
+  \draw (m1.G) -- ++(-0.15,0) node[left] {\scriptsize $V_{FB}$};
+  \draw (m2.G) -- ++(0.15,0) node[right] {\scriptsize $V_{REF}$};
+
+  % ------------------------------------------------ mirror: M3 (diode, gate right), M4 (gate left)
+  \node[nmos, xscale=-1] (m3) at (2.2,1.1) {};
+  \node[nmos] (m4) at (4.2,1.1) {};
+  \node[left] at (2.1,0.85) {\scriptsize $M_3$};
+  \node[right] at (4.3,0.85) {\scriptsize $M_4$};
+  \draw (m1.D) -- (m3.D);
+  \draw (m2.D) -- (m4.D);
+  \draw (m3.S) -- (2.2,0);
+  \draw (m4.S) -- (4.2,0);
+  \draw (m3.G) -- (m4.G);
+  \draw (2.2,2.2) node[circ] {} -| (3.2,1.1) node[circ] {};
+  \draw (4.2,2.4) node[circ] {} -- (5.6,2.4);
+  \node[above] at (4.95,2.4) {\scriptsize $V_{EA}$};
+
+  % ------------------------------------------------ buffer: MBS (current source), MB (PMOS follower, bulk = source)
+  \node[pmos] (mbs) at (6.5,5.3) {};
+  \node[right] at (6.6,5.55) {\scriptsize $M_{BS}$};
+  \draw (mbs.S) -- (6.5,\VIN);
+  \draw (pb) |- (5.3,5.95) |- (mbs.G);
+  \node[pmos] (mb) at (6.5,2.4) {};
+  \node[right] at (6.6,2.15) {\scriptsize $M_B$};
+  \draw (5.6,2.4) -- (mb.G);
+  \draw (mbs.D) -- (mb.S);
+  \draw (mb.D) -- (6.5,0);
+  \draw (6.5,3.75) node[circ] {} -- (8.5,3.75);
+  \node[above] at (7.5,3.75) {\scriptsize $V_G$};
+
+  % ------------------------------------------------ pass device MP
+  \node[pmos] (mp) at (9.4,5.3) {};
+  \node[right] at (9.5,5.55) {\scriptsize $M_P$};
+  \draw (mp.S) -- (9.4,\VIN);
+  \draw (8.5,3.75) |- (mp.G);
+  \draw (mp.D) -- (9.4,3.75) node[circ] {} -- (15.2,3.75) node[right] {$V_{OUT}$};
+
+  % ------------------------------------------------ divider R1/R2
+  \draw (10.8,3.75) node[circ] {} to[R, l_=$R_1$] (10.8,1.9) node[circ] {}
+        to[R, l_=$R_2$] (10.8,0);
+  \draw (10.8,1.9) -- (11.5,1.9) node[right] {\scriptsize $V_{FB}$};
+
+  % ------------------------------------------------ load: CL + ESR, IL
+  \draw (13.0,3.75) node[circ] {} to[C, l_=$C_L$] (13.0,1.9) to[R, l_=$R_{ESR}$] (13.0,0);
+  \draw (14.6,3.75) node[circ] {} to[american current source, l_=$I_L$] (14.6,0);
+\end{circuitikz}
