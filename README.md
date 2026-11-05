@@ -5,6 +5,10 @@ used in the design is proved, every transistor is sized by hand, and the result 
 
 ![LDO schematic](figures/schematic.png)
 
+The figure above is the drawing used in the PDFs. The design source is the Electric schematic
+[`schematic/ldo180.jelib`](schematic/ldo180.jelib) (cell `ldo180{sch}`); its netlist matches the simulated
+circuit device by device (see [Schematic in Electric](#schematic-in-electric)).
+
 ## Documents
 
 | File | Content |
@@ -38,6 +42,37 @@ Output capacitor: 2.2 µF ceramic. Margins that are thin are listed openly in Pa
 - **Feedback:** resistive divider, 90 kΩ / 60 kΩ.
 - **Bias and reference:** ideal 5 µA bias current; ideal VREF (no bandgap in this project).
 
+## Schematic in Electric
+
+The final circuit (v3) is drawn in the [Electric VLSI](https://www.staticfreesoft.com/) 9.08 schematic
+editor as cell `ldo180{sch}`: nine 4-terminal MOSFETs with their W/L (and M = 300 for the pass device) as
+attributes, the two divider resistors, and five pins (`vin`, `gnd`, `vout`, `vref`, `ibias`). The ideal
+bias current, VREF, the output capacitor with its ESR and the load are test-bench parts, not part of the
+chip. The cell is built with Electric's database API from `schematic/gen_schematic.py` (wire by wire, so it
+can be regenerated), and can be opened and edited in Electric as usual.
+
+Electric's own SPICE writer turns the drawing into [`schematic/ldo180_electric.spi`](schematic/ldo180_electric.spi).
+`schematic/check_netlist.py` then checks that this is the circuit behind every result:
+
+1. **Netlist comparison.** All 11 devices of Electric's netlist match the Python netlist used for the
+   simulations (`scripts/ldo_netlist.py`, `sizes_v3.json`): terminals (including the bulk of the input pair
+   tied to the tail and the bulk of the follower tied to its source), model, W, L, M and R.
+2. **Re-simulation.** The same test benches run on Electric's netlist give the published v3 numbers:
+
+| Quantity | Published (v3) | Electric netlist |
+|---|---|---|
+| Load regulation, 0.1 → 50 mA | 9.879 mV | 9.879 mV |
+| Line regulation, 50 mA | 29.94 mV/V | 29.94 mV/V |
+| PSRR at 1 kHz, 0.1 / 50 mA | 31.44 / 31.02 dB | 31.44 / 31.02 dB |
+| Load-step dip | 9.891 mV | 9.891 mV |
+| Phase margin, 0.1 / 1 / 10 / 50 mA | 89.9 / 88.7 / 80.4 / 71.1° | 89.9 / 88.7 / 80.4 / 71.1° |
+| DC loop gain, 0.1 / 1 / 10 / 50 mA | 58.6 / 59.5 / 58.9 / 52.3 dB | 58.6 / 59.5 / 58.9 / 52.3 dB |
+
+All differences are at most 1e-7 in the units shown (rounding). Two test-bench conventions apply to both flows: Electric writes
+sizes in schematic units (µm) with `.opt scale=0.2U`, which the test bench replaces by `.option scale=1e-6`;
+and the drain/source areas and perimeters (AD, AS, PD, PS), which are layout data and not part of a
+schematic, are added with the same rule as in `ldo_netlist.py` (0.5 µm of diffusion on each side).
+
 ## How the design evolved
 
 | Version | Change | Result |
@@ -59,6 +94,8 @@ scripts/    Python flow: device characterisation, hand design, simulations, docu
             + all results as JSON (params, hand, sizes_v1..v3, sim_*_v1..v3)
 figures/    plots used in the documents
 netlists/   final circuit (v3) with operating-point, loop-gain, PSRR, line, load and load-step test benches
+schematic/  Electric schematic (ldo180.jelib), its generator, Electric's SPICE netlist and the
+            netlist / re-simulation check (check_netlist.py, check_netlist.json)
 sim/        working folder for ngspice runs (place the model file here)
 ```
 
@@ -82,6 +119,15 @@ python render.py path/to/tectonic           # fill numbers into both documents a
 ```
 
 Every number in the two PDFs is filled in by `render.py` from the JSON results; none is typed by hand.
+
+Schematic (needs Java and the Electric 9.08 jar; set `ELECTRIC_JAR` if it is not at
+`C:\Electric\electricBinaryFull-9.08.jar`):
+
+```
+cd schematic
+python gen_schematic.py                     # builds ldo180.jelib and writes ldo180_electric.spi
+python check_netlist.py                     # device-by-device comparison + re-simulation
+```
 
 ## Limitations
 
