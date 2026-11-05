@@ -5,23 +5,23 @@ Hldo180|9.08
 Vschematic|sch
 
 # Cell ldo180;1{sch}
-Cldo180;1{sch}||schematic|1793892170495|1793892170495|
+Cldo180;1{sch}||schematic|1793896121317|1793896121317|
 Ngeneric:Facet-Center|art@0||0|0||||AV
 N4-Port-Transistor|m1|D5G1;|24|22|||YR|2|ATTR_length()D1.0|ATTR_width()D81.0|SIM_spice_model()SPMOS
 N4-Port-Transistor|m2|D5G1;|52|22|||RRR|2|ATTR_length()D1.0|ATTR_width()D81.0|SIM_spice_model()SPMOS
 N4-Port-Transistor|m3|D5G1;|28|-6|||XR||ATTR_length()D3.0|ATTR_width()D25.0|SIM_spice_model()SNMOS
 N4-Port-Transistor|m4|D5G1;|48|-6|||R||ATTR_length()D3.0|ATTR_width()D25.0|SIM_spice_model()SNMOS
 N4-Port-Transistor|m5|D5G1;|24|46|||YR|2|ATTR_length()D1.0|ATTR_width()D40.0|SIM_spice_model()SPMOS
-N4-Port-Transistor|mb|D5G1;|80|10|||YR|2|ATTR_length()D0.5|ATTR_width()D12.0|SIM_spice_model()SPMOS
+N4-Port-Transistor|mb|D5G1;|80|10|||YR|2|ATTR_length()D0.5|ATTR_width()D8.0|SIM_spice_model()SPMOS
 N4-Port-Transistor|mbias|D5G1;|0|46|||RRR|2|ATTR_length()D1.0|ATTR_width()D5.0|SIM_spice_model()SPMOS
-N4-Port-Transistor|mbs|D5G1;|80|46|||YR|2|ATTR_length()D1.0|ATTR_width()D30.0|SIM_spice_model()SPMOS
+N4-Port-Transistor|mbs|D5G1;|80|46|||YR|2|ATTR_length()D1.0|ATTR_width()D20.0|SIM_spice_model()SPMOS
 N4-Port-Transistor|mp|D5G1;|120|46|||YR|2|ATTR_M()D300.0|ATTR_length()D0.18|ATTR_width()D10.0|SIM_spice_model()SPMOS
 Ngeneric:Invisible-Pin|pin@0||-4.75|46.75|||||ART_message(D5G1;)SMBIAS
 Ngeneric:Invisible-Pin|pin@1||-4.13|45.25|||||ART_message(D5G1;)S5/1
 Ngeneric:Invisible-Pin|pin@2||27.82|46.75|||||ART_message(D5G1;)SM5
 Ngeneric:Invisible-Pin|pin@3||28.44|45.25|||||ART_message(D5G1;)S40/1
 Ngeneric:Invisible-Pin|pin@4||84.13|46.75|||||ART_message(D5G1;)SMBS
-Ngeneric:Invisible-Pin|pin@5||84.44|45.25|||||ART_message(D5G1;)S30/1
+Ngeneric:Invisible-Pin|pin@5||84.44|45.25|||||ART_message(D5G1;)S20/1
 Ngeneric:Invisible-Pin|pin@6||123.82|47.5|||||ART_message(D5G1;)SMP
 Ngeneric:Invisible-Pin|pin@7||125.37|46|||||ART_message(D5G1;)S10/0.18
 Ngeneric:Invisible-Pin|pin@8||124.44|44.5|||||ART_message(D5G1;)Sx300
@@ -34,7 +34,7 @@ Ngeneric:Invisible-Pin|pin@14||23.56|-6.75|||||ART_message(D5G1;)S25/3
 Ngeneric:Invisible-Pin|pin@15||51.82|-5.25|||||ART_message(D5G1;)SM4
 Ngeneric:Invisible-Pin|pin@16||52.44|-6.75|||||ART_message(D5G1;)S25/3
 Ngeneric:Invisible-Pin|pin@17||83.82|10.75|||||ART_message(D5G1;)SMB
-Ngeneric:Invisible-Pin|pin@18||85.06|9.25|||||ART_message(D5G1;)S12/0.5
+Ngeneric:Invisible-Pin|pin@18||84.75|9.25|||||ART_message(D5G1;)S8/0.5
 Ngeneric:Invisible-Pin|pin@19||124.82|16.75|||||ART_message(D5G1;)SR1
 Ngeneric:Invisible-Pin|pin@20||125.13|15.25|||||ART_message(D5G1;)S90k
 Ngeneric:Invisible-Pin|pin@21||124.82|-19.25|||||ART_message(D5G1;)SR2

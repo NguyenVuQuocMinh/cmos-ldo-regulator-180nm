@@ -56,9 +56,12 @@
 \noindent
 This note sizes a PMOS low-dropout regulator from a written specification and checks it in ngspice.
 Section~\ref{sec:models} extracts square-law parameters from the 0.18\,$\mu$m BSIM3 model.
-Section~\ref{sec:hand} computes every $W/L$, bias current and resistor step by step. Section~\ref{sec:sim}
-verifies the design, reports three iterations, explains each gap between hand calculation and
-simulation, and lists the corner results. The final design meets every specification at the nominal point.
+Section~\ref{sec:hand} computes every $W/L$, bias current and resistor step by step, following the
+system-level LDO design procedure of Rinc\'on-Mora \cite{rm_thesis,rm_jssc}: topology, feedback network,
+pass device, open-loop gain, transient budget, gain stage, buffer and quiescent current.
+Section~\ref{sec:sim} verifies the design, reports four iterations, explains each gap between hand
+calculation and simulation, and lists the corner results. The final design meets every specification
+at the nominal point.
 \textbf{All equation, lemma, proposition and corollary numbers refer to Part~1}
 (\texttt{ldo\_theory\_proofs.pdf}), where each formula is proved; tables, figures and sections refer to this note.
 \end{abstract}
@@ -71,23 +74,23 @@ simulation, and lists the corner results. The final design meets every specifica
 \begin{table}[H]
 \centering\small
 \caption{Specification. Typical model, $T = 27\,^\circ$C unless stated. The last column is the
-simulated value of the final design (v3, Section~\ref{sec:sim}).}
+simulated value of the final design (v4, Section~\ref{sec:sim}).}
 \label{tab:spec}
 \begin{tabular}{llll}
 \toprule
-Quantity & Condition & Spec & Simulated (v3)\\
+Quantity & Condition & Spec & Simulated (v4)\\
 \midrule
 Input voltage $\VIN$ & & <<SP['VIN_MIN']|.1f>>--<<SP['VIN_MAX']|.1f>>\,V (nom.\ <<SP['VIN_NOM']|.1f>>\,V) & --\\
-Output voltage $\VOUT$ & & <<SP['VOUT']|.2f>>\,V & <<S3['loadreg']['v_heavy']|.4f>>--<<S3['loadreg']['v_light']|.4f>>\,V\\
+Output voltage $\VOUT$ & & <<SP['VOUT']|.2f>>\,V & <<S4['loadreg']['v_heavy']|.4f>>--<<S4['loadreg']['v_light']|.4f>>\,V\\
 Load current $\IL$ & & <<SP['IL_MIN']*1e3|.1f>>--<<SP['IL_MAX']*1e3|.0f>>\,mA & --\\
-Dropout voltage & $\IL = <<SP['IL_MAX']*1e3|.0f>>$\,mA, $\VOUT$ within 1\,\% & $\le <<SP['VDO']*1e3|.0f>>$\,mV & <<S3['linereg']['50mA']['VDO_1pct']*1e3|.0f>>\,mV\\
+Dropout voltage & $\IL = <<SP['IL_MAX']*1e3|.0f>>$\,mA, $\VOUT$ within 1\,\% & $\le <<SP['VDO']*1e3|.0f>>$\,mV & <<S4['linereg']['50mA']['VDO_1pct']*1e3|.0f>>\,mV\\
 Output capacitor & ceramic & $\CL = <<SP['CL']*1e6|.1f>>\,\mu$F, $\RESR = 0$--<<SP['ESR_MAX']*1e3|.0f>>\,m$\Omega$ & --\\
-Phase margin & all loads, all $\RESR$ in range & $\ge <<SP['PM_MIN']|.0f>>^\circ$ & $<<min(C3['pm_esr0_min'], C3['pm_min'], min(r[1] for r in S3['esr']['50mA'][:5]))|.1f>>^\circ$ (worst, incl.\ corners)\\
-PSRR & 1\,kHz, $\IL = <<SP['IL_MAX']*1e3|.0f>>$\,mA, $\VIN = 1.8$\,V & $\ge <<SP['PSRR_MIN_DB']|.0f>>$\,dB & <<S3['psrr']['50mA']['1kHz']|.1f>>\,dB\\
-Load regulation & $\IL$: <<SP['IL_MIN']*1e3|.1f>>$\to$<<SP['IL_MAX']*1e3|.0f>>\,mA & $|\Delta\VOUT| \le <<SP['LOADREG_MAX']*1e3|.0f>>$\,mV & <<S3['loadreg']['dV']*1e3|.1f>>\,mV\\
-Line regulation & $\VIN$: <<SP['VIN_MIN']|.1f>>$\to$<<SP['VIN_MAX']|.1f>>\,V & $\le <<SP['LINEREG_MAX']*1e3|.0f>>$\,mV/V & <<max(S3['linereg']['0.1mA']['slope'], S3['linereg']['50mA']['slope'])*1e3|.1f>>\,mV/V (worst)\\
-Quiescent current & excl.\ $\IL$, incl.\ divider & $\le <<SP['IQ_MAX']*1e6|.0f>>\,\mu$A & <<S3['iq']['at_1p8']*1e6|.1f>>\,$\mu$A\\
-Load transient & <<SP['IL_MIN']*1e3|.1f>>$\leftrightarrow$<<SP['IL_MAX']*1e3|.0f>>\,mA, 1\,$\mu$s edges & $|\Delta\VOUT| \le <<SP['TRAN_MAX']*1e3|.0f>>$\,mV & <<S3['tran']['dip_from_initial']*1e3|.1f>>\,mV\\
+Phase margin & all loads, all $\RESR$ in range & $\ge <<SP['PM_MIN']|.0f>>^\circ$ & $<<min(C4['pm_esr0_min'], C4['pm_min'], min(r[1] for r in S4['esr']['50mA'][:5]))|.1f>>^\circ$ (worst, incl.\ corners)\\
+PSRR & 1\,kHz, $\IL = <<SP['IL_MAX']*1e3|.0f>>$\,mA, $\VIN = 1.8$\,V & $\ge <<SP['PSRR_MIN_DB']|.0f>>$\,dB & <<S4['psrr']['50mA']['1kHz']|.1f>>\,dB\\
+Load regulation & $\IL$: <<SP['IL_MIN']*1e3|.1f>>$\to$<<SP['IL_MAX']*1e3|.0f>>\,mA & $|\Delta\VOUT| \le <<SP['LOADREG_MAX']*1e3|.0f>>$\,mV & <<S4['loadreg']['dV']*1e3|.1f>>\,mV\\
+Line regulation & $\VIN$: <<SP['VIN_MIN']|.1f>>$\to$<<SP['VIN_MAX']|.1f>>\,V & $\le <<SP['LINEREG_MAX']*1e3|.0f>>$\,mV/V & <<max(S4['linereg']['0.1mA']['slope'], S4['linereg']['50mA']['slope'])*1e3|.1f>>\,mV/V (worst)\\
+Quiescent current & excl.\ $\IL$, incl.\ divider & $\le <<SP['IQ_MAX']*1e6|.0f>>\,\mu$A & <<S4['iq']['at_1p8']*1e6|.1f>>\,$\mu$A\\
+Load transient & <<SP['IL_MIN']*1e3|.1f>>$\leftrightarrow$<<SP['IL_MAX']*1e3|.0f>>\,mA, 1\,$\mu$s edges & $|\Delta\VOUT| \le <<SP['TRAN_MAX']*1e3|.0f>>$\,mV & <<S4['tran']['dip_from_initial']*1e3|.1f>>\,mV\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -95,7 +98,7 @@ Load transient & <<SP['IL_MIN']*1e3|.1f>>$\leftrightarrow$<<SP['IL_MAX']*1e3|.0f
 \paragraph{Process and tools.} The transistor model is the 0.18\,$\mu$m BSIM3v3.1 file \texttt{cmos180.lib}
 (1.8\,V devices, $t_{ox} = 4.1$\,nm) from the analog-IC coursework. Simulations use ngspice-46 in batch
 mode, driven by Python scripts; every number in this note is read from the script outputs. The
-reference voltage $\VREF = <<SP['VREF']|.1f>>$\,V and the bias current $I_{REF} = <<V3['IREF']*1e6|.0f>>\,\mu$A are ideal
+reference voltage $\VREF = <<SP['VREF']|.1f>>$\,V and the bias current $I_{REF} = <<Z4['IREF']*1e6|.0f>>\,\mu$A are ideal
 sources (a bandgap is outside the scope of this note).
 
 \paragraph{Architecture (Fig.~\ref{fig:dsch}).}
@@ -162,88 +165,153 @@ for the widths used here.
 
 
 %===================================================================================
-\section{Hand design from the specification}\label{sec:hand}
-The script \texttt{design.py} carries out the steps below; each number is quoted from its output. This
-section describes the final design (v3). Section~\ref{sec:iter} explains how v1 and v2 led to it.
+\section{Hand design: the LDO design procedure}\label{sec:hand}
+The sizing follows the system-level design procedure of Rinc\'on-Mora: the design considerations of
+\cite[Chapter~II]{rm_thesis} (AC analysis, transient analysis, pass device, amplifier), the
+pass-element choice of \cite[Section~6.1]{rm_thesis}, and the dropout, buffer and gain-stage
+equations of \cite[Sections~II--IV]{rm_jssc}. Each formula is used in the form proved in Part~1. The
+script \texttt{design\_flow.py} carries out the eight steps below, and each number is quoted from its
+output. Steps~6 and~7 run twice. \emph{Pass~A} uses square-law parameters only. \emph{Pass~B} replaces
+$g_m/I_D$ and $\lambda$ by the values read at the simulated operating point of the previous design
+(v3, Section~\ref{sec:iter}), the usual second pass of a hand design. The result is the final design v4.
 
-\paragraph{Step 1 -- Divider.} $\beta = \VREF/\VOUT = <<H['beta']|.2f>>$. A divider current
-$I_{div} = <<H['I_div']*1e6|.0f>>\,\mu$A gives $R_2 = \VREF/I_{div} = <<H['R2']/1e3|.0f>>$\,k$\Omega$ and
-$R_1 = (\VOUT-\VREF)/I_{div} = <<H['R1']/1e3|.0f>>$\,k$\Omega$.
+\paragraph{Step 1 -- Topology.} Of the five pass elements compared in \cite[Table~6.1]{rm_thesis}, the
+common-source PMOS has the lowest dropout ($V_{SD,sat}$) together with a low quiescent current, and the
+reference calls it the best overall choice, so $M_P$ is a PMOS. Its large gate capacitance must not load the high-impedance gain stage, so a buffer isolates the
+two (the buffered architecture of \cite[Fig.~2.7]{rm_thesis}). The gain stage is the five-transistor OTA
+of \cite[Fig.~8(a)]{rm_jssc}, which needs only a small common-mode range around $\VREF$
+\cite[Section~IV]{rm_jssc}. With $\VREF = <<SP['VREF']|.1f>>$\,V a PMOS input pair is used (Step~6a). The buffer is a
+class-A PMOS source follower $M_B$ biased by $M_{BS}$, with its bulk tied to its source.
 
-\paragraph{Step 2 -- Pass device.} Eq.~\eqref{T-eq:wl_sat} with $\KP = <<P['p_L0.18']['KP']*1e6|.1f>>\,\mu$A/V$^2$ (PMOS,
-$L = 0.18\,\mu$m) and $V_{IN,nom}-\VOUT = 0.3$\,V (10\,mV margin) gives $W/L \ge <<2*SP['IL_MAX']/(P['p_L0.18']['KP']*0.29**2)|.0f>>$. Rounding up
-to $<<H['MP']|d>>$ fingers of 10\,$\mu$m gives $W = <<H['WP']*1e3|.1f>>$\,mm and $W/L = <<H['WL_p']|.0f>>$. Then:
+\paragraph{Step 2 -- Feedback network} \cite[Section~2.1]{rm_thesis}. The divider current is a
+quiescent-current overhead, so it is kept small: $I_R = <<F['s2']['I_R']*1e6|.0f>>\,\mu$A. Then
+$\beta = \VREF/\VOUT = <<F['s2']['beta']|.2f>>$, $R_2 = \VREF/I_R = <<F['s2']['R2']/1e3|.0f>>$\,k$\Omega$ and
+$R_1 = (\VOUT-\VREF)/I_R = <<F['s2']['R1']/1e3|.0f>>$\,k$\Omega$.
+
+\paragraph{Step 3 -- Pass device} \cite[Eqs.~(12)--(14)]{rm_jssc}, \cite[Section~2.3]{rm_thesis}. Two
+conditions bound $W/L$ from below.
 \begin{itemize}[itemsep=0.1ex]
-\item Full load: $\ov = <<H['vov_p']*1e3|.0f>>$\,mV, $\VSGP = <<H['vsg_max_load']|.3f>>$\,V,
-$\gmP = 2I/\ov = <<H['gm_p_max']|.3f>>$\,S.
-\item Dropout check \eqref{T-eq:vov_do} at $V_{DO} = <<SP['VDO']|.1f>>$\,V: $\ov = <<H['vov_do']*1e3|.0f>>$\,mV, i.e.\
-$\VSGP^{DO} = <<H['vsg_do']|.3f>>$\,V, which the drive chain can reach (Step 6).
-\item Light load ($<<SP['IL_MIN']*1e3|.1f>>$\,mA, weak inversion): the square law does not apply, so
-$\VSGP = <<H['vsg_min_load']|.3f>>$\,V and $\gmP = <<H['gm_p_min']*1e3|.2f>>$\,mS are read from the simulated
-$I_D$--$V_{SG}$ curve of one finger. Hence $\Delta\VSGP = <<H['dVSG']*1e3|.0f>>$\,mV.
-\item Gate capacitance: $C_G = \tfrac23WLC_{ox} + 2WC_{ov} = <<H['Cg']*1e12|.2f>>$\,pF.
+\item \emph{Dropout.} The buffer can pull $\VG$ down to $V_{G,min} = V_{OV4} + \VSGB \approx <<F['s3']['vg_min']|.2f>>$\,V
+($\VSGB$ is checked in Step~6b). At $V_{IN,min}$ the available drive is
+$\VSGP = <<F['s3']['vsg_avail']|.3f>>$\,V, i.e.\ $\ov = <<F['s3']['vov_avail']|.3f>>$\,V. Carrying $I_{max}$ at
+$\VSD = V_{DO}$ (triode, \eqref{T-eq:vov_do}, the exact form of \cite[Eq.~(12)]{rm_jssc}) needs
+$W/L \ge <<F['s3']['wl_do']|.0f>>$.
+\item \emph{Saturation at $V_{IN,nom}$.} The loop gain and the PSRR collapse in triode
+(Corollary~\ref{T-cor:dropout_psrr}), so $M_P$ must stay saturated at the nominal input.
+By \eqref{T-eq:wl_sat} with a 10\,mV margin, $W/L \ge <<F['s3']['wl_sat']|.0f>>$.
 \end{itemize}
+The saturation condition is binding. Rounding up to fingers of 10\,$\mu$m gives
+$M_P = <<F['s3']['MP']|d>>\times10\,\mu$m$/0.18\,\mu$m ($W/L = <<F['s3']['WL']|.0f>>$). With this size the dropout point needs
+only $\VSGP^{DO} = <<F['s3']['vsg_do']|.3f>>$\,V, below the available <<F['s3']['vsg_avail']|.3f>>\,V, and the on-resistance at
+the available drive is $R_{on} = 1/(\KP\frac WL\ov) = <<F['s3']['ron']|.2f>>\,\Omega$ \cite[Eq.~(13)]{rm_jssc}. At full load
+$\VSGP = <<F['s3']['vsg_max']|.3f>>$\,V and $\gmP = <<F['s3']['gm_p_max']|.3f>>$\,S. At light load (weak inversion) the
+simulated $I_D$--$V_{SG}$ curve of one finger gives $\VSGP = <<F['s3']['vsg_min']|.3f>>$\,V and
+$\gmP = <<F['s3']['gm_p_min']*1e3|.2f>>$\,mS, so $\Delta\VSGP = <<F['s3']['dVSG']*1e3|.0f>>$\,mV. The gate
+capacitance, $C_{par}$ in \cite{rm_thesis,rm_jssc}, is $C_G = \tfrac23WLC_{ox}+2WC_{ov} = <<F['s3']['Cpar']*1e12|.2f>>$\,pF.
 
-\paragraph{Step 3 -- Required loop gain $G = \beta\Aea\Ab$.} Each specification gives a lower bound
-on $G$:
-\begin{itemize}[itemsep=0.1ex]
-\item PSRR (Proposition~\ref{T-prop:psrr}): $G \ge 10^{30/20} = <<H['G_psrr']|.1f>>$.
-\item Load regulation (Corollary~\ref{T-cor:static}b): $G \ge \Delta\VSGP/15\,\text{mV} = <<H['G_load']|.1f>>$.
-\item Line regulation (Corollary~\ref{T-cor:static}c): $G \ge 1/(35\,\text{mV/V}) = <<H['G_line']|.1f>>$.
-\end{itemize}
-The binding one is the PSRR: $G \ge <<H['G_req']|.1f>>$, i.e.\ $\Aea\Ab \ge <<H['G_req']/H['beta']|.0f>>$.
+\paragraph{Step 4 -- Open-loop gain from regulation and PSRR} \cite[Eq.~(2.9)]{rm_thesis}. Equation~(2.9)
+of \cite{rm_thesis} gives the closed-loop output resistance $R_{o,pass}/(1+A_{ol}\beta)\approx 1/(G\gmP)$
+with $G = \beta\Aea\Ab$. Since $\gmP$ changes by two decades over the load range, it is integrated over
+the range, which is Corollary~\ref{T-cor:static}(b): $|\Delta\VOUT| = \Delta\VSGP/G$. Each specification
+gives a lower bound on $G$:
+PSRR (Proposition~\ref{T-prop:psrr}): $G \ge <<F['s4']['G_req']['psrr']|.1f>>$;
+load regulation: $G \ge <<F['s4']['G_req']['load']|.1f>>$;
+line regulation (Corollary~\ref{T-cor:static}c): $G \ge <<F['s4']['G_req']['line']|.1f>>$.
+The PSRR is binding: $G_{min} = <<F['s4']['G_min']|.1f>>$.
 
-\paragraph{Step 4 -- Error amplifier gain.} $\Aea = (2/V_{OV1})/(\lambda_p+\lambda_n)$ with $V_{OV1} = <<V3['vov1']|.2f>>$\,V,
-$L_{12} = <<V3['L12']*1e6|.0f>>\,\mu$m and $L_{34} = <<V3['L34']*1e6|.0f>>\,\mu$m:
-$\lambda_p+\lambda_n = <<V3['lam_sum']|.3f>>$\,V$^{-1}$, so $\Aea = <<V3['A_ea']|.0f>>$
-(<<db(V3['A_ea'])|.1f>>\,dB). Buffer at $I_B = <<V3['I_B']*1e6|.0f>>\,\mu$A: $\Ab = <<V3['A_b']|.3f>>$. Hence
-$G = <<V3['G']|.1f>>$ (<<db(V3['G'])|.1f>>\,dB), which is above the requirement.
+\paragraph{Step 5 -- Transient budget} \cite[Eqs.~(2.10)--(2.12)]{rm_thesis}. By
+Proposition~\ref{T-prop:budget}, the 50\,mV limit for the $\Delta I = <<F['s5']['dI']*1e3|.1f>>$\,mA step allows a response time
+\[
+\Delta t_{1,max} = \frac{\CL\,(\Delta V_{tr} - \Delta I\,\RESR)}{\Delta I} = <<F['s5']['dt1_max']*1e6|.2f>>\,\mu\text{s}.
+\]
+The loop reaction time $1/(2\pi\fu)$ and the gate slew time \eqref{T-eq:tsr} must fit in this budget.
+Steps~6 and~7 check both.
 
-\paragraph{Step 5 -- Unity-gain frequency and poles.}
-\begin{itemize}[itemsep=0.1ex]
-\item Eq.~\eqref{T-eq:fu} at full load: $\fu = <<V3['UGF_max']/1e6|.2f>>$\,MHz.
-\item Buffer pole: $g_{mB} = 2I_B/V_{OV,B} = <<V3['gm_b']*1e3|.2f>>$\,mS, so $p_B = <<V3['p_b']/1e6|.1f>>$\,MHz.
-\item EA output capacitance: $C_{EA} = <<V3['C_ea']*1e15|.0f>>$\,fF, of which $M_2$ contributes <<V3['cparts']['c_m2']*1e15|.0f>>\,fF.
-With $R_{o,EA} = <<V3['Ro_ea']/1e3|.0f>>$\,k$\Omega$ this gives $p_{EA} = <<V3['p_ea']/1e6|.2f>>$\,MHz.
-\item ESR zero at $\RESR = 10$\,m$\Omega$: $z_{ESR} = <<V3['z_esr']/1e6|.1f>>$\,MHz.
-\end{itemize}
-Evaluating the full transfer function \eqref{T-eq:T} numerically gives PM $= <<V3['heavy']['PM']|.0f>>^\circ$ at
-full load ($<<V3['heavy_esr0']['PM']|.0f>>^\circ$ with $\RESR = 0$) and $<<V3['light']['PM']|.0f>>^\circ$ at
-light load. The hand PM with $\RESR = 0$ sits right at the 45$^\circ$ limit, and the ESR bound \eqref{T-eq:esr},
-$<<V3['ESR_bound']*1e3|.0f>>$\,m$\Omega$, is slightly below the 50\,m$\Omega$ end of the range. Both are
-pessimistic: the bound is only sufficient, and the hand $G$ is too high (Section~\ref{sec:gap}). The simulation
-(Fig.~\ref{fig:psrr}, right) decides.
-
-\paragraph{Step 6 -- EA current and buffer $V_{SG}$.} By Proposition~\ref{T-prop:pea}, the EA current
-does not move $p_{EA}$, so it is set by the power budget: $I_{D1} = <<V3['I_D1']*1e6|.0f>>\,\mu$A per side. The
-window \eqref{T-eq:window} gives
-$<<H['vsgb_lo']|.3f>>\,\text{V} \le \VSGB \le <<H['vsgb_hi']|.3f>>$\,V. Its centre,
-<<H['vsgb_mid']|.3f>>\,V, sets $V_{OV,B} = <<V3['vov_b']|.2f>>$\,V.
-
-\paragraph{Step 7 -- Predictions and current budget.}
-\begin{itemize}[itemsep=0.1ex]
-\item Load regulation $\Delta\VSGP/G = <<V3['loadreg']*1e3|.1f>>$\,mV.
-\item Line regulation $1/G = <<V3['linereg']*1e3|.1f>>$\,mV/V.
-\item $\mathrm{PSRR}_{DC} = <<V3['psrr_dc_dB']|.1f>>$\,dB.
-\item $I_Q = I_{REF} + 2I_{D1} + I_B + I_{div} = <<V3['Iq']*1e6|.0f>>\,\mu$A.
-\end{itemize}
+\paragraph{Step 6 -- Gain stage} \cite[Section~2.4]{rm_thesis}, \cite[Section~IV]{rm_jssc}.
+\begin{enumerate}[label=(\alph*),itemsep=0.2ex]
+\item \emph{Common-mode range around $\VREF$.} For a PMOS pair with an NMOS mirror,
+$V_{IC,max} = V_{IN,min} - V_{SD,sat5} - V_{SG1} = <<FA['vic_max']|.3f>>$\,V and
+$V_{IC,min} = V_{GS3} - |V_{TH1}| = <<FA['vic_min']|.3f>>$\,V. $\VREF = <<SP['VREF']|.1f>>$\,V lies inside.
+\item \emph{Output swing.} The gain stage must move the buffer over the whole range from $M_P$ almost off
+to full drive \cite[Section~IV]{rm_jssc}. For this topology that is the window of
+Proposition~\ref{T-prop:window}: $<<FA['vsgb_lo']|.3f>>\,\text{V} \le \VSGB \le <<FA['vsgb_hi']|.3f>>$\,V. Its centre,
+$\VSGB = <<FA['vsgb']|.2f>>$\,V, sets $V_{OV,B} = <<FA['vov_b']|.2f>>$\,V.
+\item \emph{Gain and channel lengths.} With $V_{OV1} = 0.1$\,V, $\Aea = (2/V_{OV1})/(\lambda_p+\lambda_n)$
+(Lemma~\ref{T-lem:ota}). By Proposition~\ref{T-prop:pea}, $\Aea\,p_{EA}$ is fixed for a given $L_{12}$ and
+falls as $L_{12}$ grows, so any gain above the need costs bandwidth. The rule is therefore: the
+shortest $L_{12}$, then the shortest $L_{34}$, whose square-law $G$ exceeds $G_{min}$ by 6\,dB. The margin
+covers the known optimism of the square law ($g_m/I_D$ too high, $\lambda$ too low; Fig.~\ref{fig:gmid},
+Section~\ref{sec:gap}), which iterations v1 and v2 measured. Table~\ref{tab:len} lists the candidates;
+the rule selects $L_{12} = <<F['s6_lengths']['chosen']['L12']|d>>\,\mu$m, $L_{34} = <<F['s6_lengths']['chosen']['L34']|d>>\,\mu$m, with
+$\Aea = <<FA['A_ea']|.0f>>$ and $G = <<FA['G']|.1f>>$.
+\item \emph{Current.} By Proposition~\ref{T-prop:pea}, $p_{EA}$ does not depend on $I_{D1}$, so the
+bandwidth requirement of \cite[Section~2.4]{rm_thesis} does not fix it; $I_{D1} = 20\,\mu$A per side
+is a budget choice. Then $p_{EA} = <<FA['p_ea']/1e6|.2f>>$\,MHz (Pass~A).
+\end{enumerate}
 
 \begin{table}[H]
 \centering\small
-\caption{Final device sizes (v3). $M_{BIAS}$, $M_5$ and $M_{BS}$ form a mirror; the widths set the current ratios.}
+\caption{Step~6c, square-law gain for each pair of channel lengths ($V_{OV1} = 0.1$\,V, $\Ab = <<FA['A_b']|.3f>>$).
+The first row that meets $G \ge 2G_{min} = <<2*F['s4']['G_min']|.1f>>$ in the order $(L_{12}, L_{34})$ is chosen.}
+\label{tab:len}
+\begin{tabular}{cccccc}
+\toprule
+$L_{12}$ ($\mu$m) & $L_{34}$ ($\mu$m) & $\Aea$ & $G$ & $G/G_{min}$ & meets rule\\
+\midrule
+<<' \\\\ '.join(f"{c['L12']} & {c['L34']} & {c['A_ea']:.0f} & {c['G']:.1f} & {c['margin']:.2f} & {'yes' if c['ok'] else 'no'}" for c in F['s6_lengths']['candidates'])>>\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Step 7 -- Buffer} \cite[Eq.~(3)]{rm_jssc}, \cite[Section~2.4]{rm_thesis}. The parasitic pole
+at the gate of $M_P$, $p_B = g_{out}/(2\pi C_G)$ (Lemma~\ref{T-lem:sf}; $P_3$ in \cite{rm_jssc}), must lie above
+$\fu$. The worst case is full load \cite[Section~2.1]{rm_thesis} with $\RESR\to0$. Proposition~\ref{T-prop:pm}
+with a target of $<<60|d>>^\circ$ (the specification, $45^\circ$, plus $15^\circ$ for corners) gives
+$\arctan(\fu/p_B) \le 30^\circ - \arctan(\fu/p_{EA})$.
+\begin{itemize}[itemsep=0.1ex]
+\item \emph{Pass A.} $\fu = <<FA['fu']/1e6|.2f>>$\,MHz and $\arctan(\fu/p_{EA}) = <<FA['phi_ea']|.1f>>^\circ$ leave
+<<FA['room_deg']|.1f>>$^\circ$ for the buffer: no bias current reaches the target. The square-law gain, and with it
+$\fu$, is too high, which is exactly the optimism the 6\,dB margin of Step~6c anticipated.
+\item \emph{Pass B.} At the operating point of v3: $g_{m1}/I_{D1} = <<FB['gmid1']|.1f>>$\,V$^{-1}$,
+$\lambda_2 = <<FB['lam2']|.3f>>$, $\lambda_4 = <<FB['lam4']|.3f>>$\,V$^{-1}$, so $\Aea = <<FB['A_ea']|.1f>>$ and $G = <<FB['G']|.1f>>$
+(still $<<FB['G_margin']|.2f>>\times G_{min}$). Then $\fu = <<FB['fu']/1e3|.0f>>$\,kHz, $p_{EA} = <<FB['p_ea']/1e6|.2f>>$\,MHz,
+$\arctan(\fu/p_{EA}) = <<FB['phi_ea']|.1f>>^\circ$, and the buffer pole must be at least
+$p_B = <<FB['pb_min']/1e6|.2f>>$\,MHz: $g_{mB} \ge 2\pi C_G p_B \Ab = <<FB['gmb_min']*1e3|.3f>>$\,mS. With the operating-point
+$g_{mB}/I_B = <<FB['gmid_b']|.2f>>$\,V$^{-1}$ this needs $I_B \ge <<FB['I_pole']*1e6|.1f>>\,\mu$A.
+\item \emph{Slew current.} For the load release only $I_B$ charges $C_G$ (Remark after
+Proposition~\ref{T-prop:budget}). With $1/(2\pi\fu) = <<FB['tau']*1e6|.3f>>\,\mu$s, the budget of Step~5 leaves
+$t_{sr} \le <<FB['t_sr_max']*1e6|.2f>>\,\mu$s, so \eqref{T-eq:tsr} needs $I_B \ge <<FB['I_slew']*1e6|.2f>>\,\mu$A. The pole condition is binding.
+\end{itemize}
+$I_B = <<FB['I_B']*1e6|.0f>>\,\mu$A (the next multiple of $I_{REF}$; v3 used 30\,$\mu$A). Predictions: $p_B = <<FB['p_b']/1e6|.2f>>$\,MHz,
+PM $= <<FB['PM_esr0']|.1f>>^\circ$ ($\RESR = 0$) and $<<FB['PM_esr']|.1f>>^\circ$ ($\RESR = 10$\,m$\Omega$), $t_{sr} = <<FB['t_sr']*1e6|.2f>>\,\mu$s. The
+load-step excursion by \eqref{T-eq:budget} is at most <<FB['dv_tr_thesis']*1e3|.0f>>\,mV with the conservative $t_{loop} = 1/\fu$
+of \cite{rm_thesis}, or <<FB['dv_tr_tau']*1e3|.1f>>\,mV with $t_{loop} = 1/(2\pi\fu)$, both within 50\,mV. $M_{BS}$ mirrors $I_{REF}$
+($W_{BS} = <<Z4['WBS']*1e6|.0f>>\,\mu$m) and $M_B$ is sized by \eqref{T-eq:sat} at $V_{OV,B}$: $W_B = <<Z4['WB']*1e6|.0f>>\,\mu$m, $L_B = <<Z4['LB']*1e6|.1f>>\,\mu$m.
+
+\paragraph{Step 8 -- Quiescent current and current efficiency} \cite[Eq.~(1)]{rm_jssc}.
+$I_Q = I_{REF} + 2I_{D1} + I_B + I_R = <<F['s8']['Iq']*1e6|.0f>>\,\mu$A (v3: <<F['s8']['Iq_v3']*1e6|.0f>>\,$\mu$A), within the
+$<<SP['IQ_MAX']*1e6|.0f>>\,\mu$A limit. The current efficiency $\IL/(\IL+I_Q)$ is <<F['s8']['eff_min']*100|.0f>>\,\% at
+<<SP['IL_MIN']*1e3|.1f>>\,mA and <<F['s8']['eff_max']*100|.2f>>\,\% at <<SP['IL_MAX']*1e3|.0f>>\,mA. Pass~B removes the
+<<(F['s8']['Iq_v3']-F['s8']['Iq'])*1e6|.0f>>\,$\mu$A by which the buffer of v3 was over-biased, which is the aim of the procedure:
+the least quiescent current that the stability and transient requirements allow \cite{rm_jssc}.
+
+\begin{table}[H]
+\centering\small
+\caption{Final device sizes (v4). $M_{BIAS}$, $M_5$ and $M_{BS}$ form a mirror; the widths set the current ratios.
+Only $M_{BS}$ and $M_B$ differ from v3.}
 \label{tab:sizes}
 \begin{tabular}{lccl}
 \toprule
-Device & $W$ ($\mu$m) & $L$ ($\mu$m) & Role / current\\
+Device & $W$ ($\mu$m) & $L$ ($\mu$m) & Role / current / set by\\
 \midrule
-$M_{BIAS}$ & <<Z3['Wbias']*1e6|.0f>> & <<Z3['Lbias']*1e6|.0f>> & diode, $I_{REF} = <<Z3['IREF']*1e6|.0f>>\,\mu$A\\
-$M_5$ & <<Z3['W5']*1e6|.0f>> & <<Z3['L5']*1e6|.0f>> & tail, <<V3['I_T']*1e6|.0f>>\,$\mu$A\\
-$M_1, M_2$ & <<Z3['W12']*1e6|.0f>> & <<Z3['L12']*1e6|.0f>> & input pair, $\ov \approx 0.1$\,V\\
-$M_3, M_4$ & <<Z3['W34']*1e6|.0f>> & <<Z3['L34']*1e6|.0f>> & mirror load, $\ov\approx0.15$\,V\\
-$M_{BS}$ & <<Z3['WBS']*1e6|.0f>> & <<Z3['LBS']*1e6|.0f>> & buffer bias, <<V3['I_B']*1e6|.0f>>\,$\mu$A\\
-$M_B$ & <<Z3['WB']*1e6|.0f>> & <<Z3['LB']*1e6|.1f>> & source follower, bulk = source\\
-$M_P$ & $<<Z3['MP']|d>>\times<<Z3['WPf']*1e6|.0f>>$ & <<Z3['LP']*1e6|.2f>> & pass device\\
-$R_1$ / $R_2$ & \multicolumn{2}{c}{<<Z3['R1']/1e3|.0f>>\,k$\Omega$ / <<Z3['R2']/1e3|.0f>>\,k$\Omega$} & divider\\
+$M_{BIAS}$ & <<Z4['Wbias']*1e6|.0f>> & <<Z4['Lbias']*1e6|.0f>> & diode, $I_{REF} = <<Z4['IREF']*1e6|.0f>>\,\mu$A\\
+$M_5$ & <<Z4['W5']*1e6|.0f>> & <<Z4['L5']*1e6|.0f>> & tail, <<2*20|d>>\,$\mu$A (Step 6d)\\
+$M_1, M_2$ & <<Z4['W12']*1e6|.0f>> & <<Z4['L12']*1e6|.0f>> & input pair, $\ov \approx 0.1$\,V (Steps 6a, 6c)\\
+$M_3, M_4$ & <<Z4['W34']*1e6|.0f>> & <<Z4['L34']*1e6|.0f>> & mirror load, $\ov\approx0.15$\,V (Step 6c)\\
+$M_{BS}$ & <<Z4['WBS']*1e6|.0f>> & <<Z4['LBS']*1e6|.0f>> & buffer bias, <<FB['I_B']*1e6|.0f>>\,$\mu$A (Step 7)\\
+$M_B$ & <<Z4['WB']*1e6|.0f>> & <<Z4['LB']*1e6|.1f>> & source follower, bulk = source (Steps 6b, 7)\\
+$M_P$ & $<<Z4['MP']|d>>\times<<Z4['WPf']*1e6|.0f>>$ & <<Z4['LP']*1e6|.2f>> & pass device (Step 3)\\
+$R_1$ / $R_2$ & \multicolumn{2}{c}{<<Z4['R1']/1e3|.0f>>\,k$\Omega$ / <<Z4['R2']/1e3|.0f>>\,k$\Omega$} & divider (Step 2)\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -260,136 +328,140 @@ load and dropout are DC sweeps, and the load step is a transient run with 1\,$\m
 \paragraph{Static output equation.} Insert the simulated operating-point voltages
 and the simulated $\Aea = g_{m1}/(g_{ds2}+g_{ds4})$ into \eqref{T-eq:static}:
 \begin{itemize}[itemsep=0.1ex]
-\item Light load: $\varepsilon = <<D3['light']['eps']*1e3|.0f>>$\,mV, so the formula gives
-$\VOUT = <<D3['light']['vout_pred']|.4f>>$\,V. Simulation: <<D3['light']['vout_sim']|.4f>>\,V.
-\item Heavy load: $\varepsilon = <<D3['heavy']['eps']*1e3|.0f>>$\,mV, so the formula gives
-<<D3['heavy']['vout_pred']|.4f>>\,V. Simulation: <<D3['heavy']['vout_sim']|.4f>>\,V.
+\item Light load: $\varepsilon = <<D4['light']['eps']*1e3|.0f>>$\,mV, so the formula gives
+$\VOUT = <<D4['light']['vout_pred']|.4f>>$\,V. Simulation: <<D4['light']['vout_sim']|.4f>>\,V.
+\item Heavy load: $\varepsilon = <<D4['heavy']['eps']*1e3|.0f>>$\,mV, so the formula gives
+<<D4['heavy']['vout_pred']|.4f>>\,V. Simulation: <<D4['heavy']['vout_sim']|.4f>>\,V.
 \end{itemize}
 The equation therefore explains both the $\pm 5$\,mV output error and its change of sign with load.
 
 \subsection{Design iterations}\label{sec:iter}
 \begin{table}[H]
 \centering\small
-\caption{Three iterations (nominal: $\VIN = 1.8$\,V, 27\,$^\circ$C, $\RESR = 10$\,m$\Omega$; corner
+\caption{Four iterations (nominal: $\VIN = 1.8$\,V, 27\,$^\circ$C, $\RESR = 10$\,m$\Omega$; corner
 columns: $\VIN\in\{1.8,1.9\}$\,V, $T\in\{0,27,85\}\,^\circ$C, both load ends).
 Values that miss the specification are marked with $\times$.}
 \label{tab:iter}
-\begin{tabular}{lccc}
+\begin{tabular}{lcccc}
 \toprule
-& v1 & v2 & v3 (final)\\
+& v1 & v2 & v3 & v4 (final)\\
 \midrule
-$L_{12}$ / $L_{34}$ ($\mu$m), $V_{OV,B}$ (V) & 1 / 1, 0.15 & 2 / 2, 0.15 & 1 / 3, <<V3['vov_b']|.2f>>\\
-Simulated $\Aea$ at full load & <<D1['heavy']['A_ea']|.0f>> & <<D2['heavy']['A_ea']|.0f>> & <<D3['heavy']['A_ea']|.0f>>\\
-PSRR at 1\,kHz, 50\,mA (dB) & <<S1['psrr']['50mA']['1kHz']|.1f>> $\times$ & <<S2['psrr']['50mA']['1kHz']|.1f>> & <<S3['psrr']['50mA']['1kHz']|.1f>>\\
-Line regulation, worst (mV/V) & <<max(S1['linereg']['0.1mA']['slope'],S1['linereg']['50mA']['slope'])*1e3|.1f>> $\times$ & <<max(S2['linereg']['0.1mA']['slope'],S2['linereg']['50mA']['slope'])*1e3|.1f>> & <<max(S3['linereg']['0.1mA']['slope'],S3['linereg']['50mA']['slope'])*1e3|.1f>>\\
-PM at 50\,mA (deg) & <<S1['loop']['50mA']['PM']|.1f>> & <<S2['loop']['50mA']['PM']|.1f>> & <<S3['loop']['50mA']['PM']|.1f>>\\
-PM, $\RESR = 0$, worst corner (deg) & -- & <<C2['pm_esr0_min']|.1f>> $\times$ & <<C3['pm_esr0_min']|.1f>>\\
-PSRR at 1\,kHz, worst corner (dB) & -- & <<C2['psrr_nom_min']|.1f>> $\times$ & <<C3['psrr_nom_min']|.1f>>\\
+$L_{12}$ / $L_{34}$ ($\mu$m), $V_{OV,B}$ (V) & 1 / 1, 0.15 & 2 / 2, 0.15 & 1 / 3, <<V3['vov_b']|.2f>> & 1 / 3, <<FB['vov_b']|.2f>>\\
+Buffer current $I_B$ ($\mu$A) & 30 & 30 & 30 & <<FB['I_B']*1e6|.0f>>\\
+Simulated $\Aea$ at full load & <<D1['heavy']['A_ea']|.0f>> & <<D2['heavy']['A_ea']|.0f>> & <<D3['heavy']['A_ea']|.0f>> & <<D4['heavy']['A_ea']|.0f>>\\
+PSRR at 1\,kHz, 50\,mA (dB) & <<S1['psrr']['50mA']['1kHz']|.1f>> $\times$ & <<S2['psrr']['50mA']['1kHz']|.1f>> & <<S3['psrr']['50mA']['1kHz']|.1f>> & <<S4['psrr']['50mA']['1kHz']|.1f>>\\
+Line regulation, worst (mV/V) & <<max(S1['linereg']['0.1mA']['slope'],S1['linereg']['50mA']['slope'])*1e3|.1f>> $\times$ & <<max(S2['linereg']['0.1mA']['slope'],S2['linereg']['50mA']['slope'])*1e3|.1f>> & <<max(S3['linereg']['0.1mA']['slope'],S3['linereg']['50mA']['slope'])*1e3|.1f>> & <<max(S4['linereg']['0.1mA']['slope'],S4['linereg']['50mA']['slope'])*1e3|.1f>>\\
+PM at 50\,mA (deg) & <<S1['loop']['50mA']['PM']|.1f>> & <<S2['loop']['50mA']['PM']|.1f>> & <<S3['loop']['50mA']['PM']|.1f>> & <<S4['loop']['50mA']['PM']|.1f>>\\
+PM, $\RESR = 0$, worst corner (deg) & -- & <<C2['pm_esr0_min']|.1f>> $\times$ & <<C3['pm_esr0_min']|.1f>> & <<C4['pm_esr0_min']|.1f>>\\
+PSRR at 1\,kHz, worst corner (dB) & -- & <<C2['psrr_nom_min']|.1f>> $\times$ & <<C3['psrr_nom_min']|.1f>> & <<C4['psrr_nom_min']|.1f>>\\
+$I_Q$ ($\mu$A) & <<S1['iq']['at_1p8']*1e6|.1f>> & <<S2['iq']['at_1p8']*1e6|.1f>> & <<S3['iq']['at_1p8']*1e6|.1f>> & <<S4['iq']['at_1p8']*1e6|.1f>>\\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{itemize}[itemsep=0.2ex]
 \item \textbf{v1} ($L = 1\,\mu$m everywhere) is stable, with a large margin, but its EA gain is only
-<<D1['heavy']['A_ea']|.0f>> against <<V1['A_ea']|.0f>> by hand. As a result, PSRR and line regulation miss.
+<<D1['heavy']['A_ea']|.0f>> against <<V1['A_ea']|.0f>> by the square law. As a result, PSRR and line regulation miss. This
+is the gain optimism that the 6\,dB margin of Step~6c now covers.
 \item \textbf{v2} doubles $L$ for $M_1$--$M_4$. The gain rises, but by Proposition~\ref{T-prop:pea} $p_{EA}$
 falls (it scales as $\lambda/L$), and the phase margin with $\RESR = 0$ drops to
 <<C2['pm_esr0_min']|.1f>>$^\circ$ at $\VIN = 1.9$\,V, 85\,$^\circ$C. At light load and $\VIN = 1.9$\,V, $\VEA$
 also rises to within <<(SP['VREF']+P['p_L1.00']['VTH']) - O2['vinmax_light']['v(ea)']|.2f>>\,V of the bound $\VREF+|V_{TH,p}|$ of
 Proposition~\ref{T-prop:window}. $M_2$ then nears triode and the PSRR falls to <<C2['psrr_nom_min']|.1f>>\,dB.
-\item \textbf{v3} applies both results.
-\begin{itemize}[itemsep=0.1ex]
-\item The simulated operating point shows that $g_{ds4}$, not $g_{ds2}$, dominates the EA output
-conductance. v3 therefore lengthens only the mirror ($L_{34} = 3\,\mu$m) and keeps the wide input pair
-short ($L_{12} = 1\,\mu$m), so $C_{EA}$ stays small.
-\item $V_{OV,B}$ is moved to the centre of the headroom window \eqref{T-eq:window}.
-\end{itemize}
+This is the reason for the shortest-$L_{12}$ rule of Step~6c.
+\item \textbf{v3} lengthens only the mirror ($L_{34} = 3\,\mu$m), because the simulated operating point
+shows that $g_{ds4}$, not $g_{ds2}$, dominates the EA output conductance, and moves $V_{OV,B}$ to the centre of
+the window \eqref{T-eq:window}. Its buffer current, 30\,$\mu$A, was a budget choice. v3 meets every specification.
+\item \textbf{v4} is the outcome of the procedure of Section~\ref{sec:hand}: Step~6c reproduces the lengths of
+v3, and Pass~B of Step~7 sets the buffer current from the pole and slew conditions, <<FB['I_B']*1e6|.0f>>\,$\mu$A. The
+quiescent current falls by <<(S3['iq']['at_1p8']-S4['iq']['at_1p8'])*1e6|.1f>>\,$\mu$A; the phase margin at full load falls by
+<<S3['loop']['50mA']['PM']-S4['loop']['50mA']['PM']|.1f>>$^\circ$ and stays above the 60$^\circ$ target with $\RESR = 0$ at the nominal point.
 \end{itemize}
 
 \subsection{Results of the final design}
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.74\textwidth]{figures/loop_gain_v3.png}
+\includegraphics[width=0.74\textwidth]{figures/loop_gain_v4.png}
 \caption{Loop gain $T$ at four loads. The DC gain is about 52--60\,dB, $\fu$ moves from
-<<S3['loop']['0.1mA']['UGF']/1e3|.1f>>\,kHz to <<S3['loop']['50mA']['UGF']/1e3|.0f>>\,kHz with load (Proposition~\ref{T-prop:fu}), and
-the PM is <<S3['loop']['50mA']['PM']|.1f>>$^\circ$ at the worst (full) load.}
+<<S4['loop']['0.1mA']['UGF']/1e3|.1f>>\,kHz to <<S4['loop']['50mA']['UGF']/1e3|.0f>>\,kHz with load (Proposition~\ref{T-prop:fu}), and
+the PM is <<S4['loop']['50mA']['PM']|.1f>>$^\circ$ at the worst (full) load.}
 \label{fig:loop}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.49\textwidth]{figures/psrr_v3.png}\hfill
-\includegraphics[width=0.49\textwidth]{figures/pm_vs_esr_v3.png}
+\includegraphics[width=0.49\textwidth]{figures/psrr_v4.png}\hfill
+\includegraphics[width=0.49\textwidth]{figures/pm_vs_esr_v4.png}
 \caption{Left: PSRR. It is flat at about $G$ up to the loop bandwidth, as predicted by \eqref{T-eq:psrr}; above
 $\fu$ the capacitor $\CL$ takes over. Right: phase margin versus $\RESR$. The margin first rises (zero
 lead), peaks near 100\,m$\Omega$, then collapses as the plateau of Proposition~\ref{T-prop:esr} pushes $\fu$
-toward $p_B$, $p_{EA}$. It stays above 45$^\circ$ up to 200\,m$\Omega$ and is <<S3['esr']['50mA'][7][1]|.0f>>$^\circ$ at
+toward $p_B$, $p_{EA}$. It stays above 45$^\circ$ up to 200\,m$\Omega$ and is <<S4['esr']['50mA'][7][1]|.0f>>$^\circ$ at
 500\,m$\Omega$.}
 \label{fig:psrr}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.49\textwidth]{figures/line_dropout_v3.png}\hfill
-\includegraphics[width=0.49\textwidth]{figures/load_regulation_v3.png}
+\includegraphics[width=0.49\textwidth]{figures/line_dropout_v4.png}\hfill
+\includegraphics[width=0.49\textwidth]{figures/load_regulation_v4.png}
 \caption{Left: $\VOUT$ versus $\VIN$. The dropout (1\,\% criterion) at 50\,mA is
-<<S3['linereg']['50mA']['VDO_1pct']*1e3|.0f>>\,mV. Right: load regulation, $\Delta\VOUT = <<S3['loadreg']['dV']*1e3|.1f>>$\,mV over the full range.}
+<<S4['linereg']['50mA']['VDO_1pct']*1e3|.0f>>\,mV. Right: load regulation, $\Delta\VOUT = <<S4['loadreg']['dV']*1e3|.1f>>$\,mV over the full range.}
 \label{fig:dc}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.66\textwidth]{figures/load_transient_v3.png}
+\includegraphics[width=0.66\textwidth]{figures/load_transient_v4.png}
 \caption{Load step. The step-up settles within 1\,mV immediately (fast loop at full load). The release
 settles exponentially with a fitted $\tau = <<TAU*1e6|.1f>>\,\mu$s, against
 $1/(2\pi f_{u,light}) = <<1/(2*pi*FU_LIGHT)*1e6|.1f>>\,\mu$s from Proposition~\ref{T-prop:step}. There is no overshoot, as the
-single-pole model predicts. The total excursion, <<S3['tran']['dip_from_initial']*1e3|.1f>>\,mV, is almost all the static
-load regulation (<<S3['loadreg']['dV']*1e3|.1f>>\,mV).}
+single-pole model predicts. The total excursion, <<S4['tran']['dip_from_initial']*1e3|.1f>>\,mV, is almost all the static
+load regulation (<<S4['loadreg']['dV']*1e3|.1f>>\,mV).}
 \label{fig:tran}
 \end{figure}
 
 \subsection{Hand calculation versus simulation}\label{sec:gap}
 \begin{table}[H]
 \centering\small
-\caption{Final design: hand values (Section~\ref{sec:hand}) and simulation. The ``re-computed'' column puts the
-simulated $g_m$ and $g_{ds}$ of the operating point into the same formulas.}
+\caption{Final design at full load: the two passes of Section~\ref{sec:hand} and the simulation of v4.
+Pass~A uses square-law parameters; Pass~B uses $g_m/I_D$ and $\lambda$ read at the v3 operating point.}
 \label{tab:gap}
 \begin{tabular}{lccc}
 \toprule
-Quantity (full load) & Hand & Re-computed & Simulated\\
+Quantity (full load) & Pass A & Pass B & Simulated (v4)\\
 \midrule
-$g_{m1}/I_{D1}$ (V$^{-1}$) & <<2/V3['vov1']|.0f>> & -- & <<D3['heavy']['gm_over_id1']|.1f>>\\
-$\lambda_{eff}$ of $M_2$ / $M_4$ (V$^{-1}$) & <<P['p_L1.00']['lam']|.3f>> / <<P['n_L3.00']['lam']|.3f>> & -- & <<D3['heavy']['lam2']|.3f>> / <<D3['heavy']['lam4']|.3f>>\\
-$\Aea$ & <<V3['A_ea']|.0f>> & <<D3['heavy']['A_ea']|.0f>> & --\\
-$\Ab$ & <<V3['A_b']|.3f>> & <<D3['heavy']['A_b']|.3f>> & --\\
-$\gmP$ (S) & <<H['gm_p_max']|.3f>> & -- & <<D3['heavy']['gmp']|.3f>>\\
-$G$ = PSRR$_{DC}$ (dB) & <<db(V3['G'])|.1f>> & <<D3['heavy']['G_dB']|.1f>> & <<S3['psrr']['50mA']['dc']|.1f>>\\
-$\fu$ (kHz) & <<V3['UGF_max']/1e3|.0f>> & <<D3['heavy']['fu_pred']/1e3|.0f>> & <<S3['loop']['50mA']['UGF']/1e3|.0f>>\\
-PM (deg) & <<V3['heavy']['PM']|.0f>> & -- & <<S3['loop']['50mA']['PM']|.0f>>\\
-Load regulation (mV) & <<V3['loadreg']*1e3|.1f>> & <<H['dVSG']/D3['heavy']['G']*1e3|.1f>> & <<S3['loadreg']['dV']*1e3|.1f>>\\
-$I_Q$ ($\mu$A) & <<V3['Iq']*1e6|.0f>> & -- & <<S3['iq']['at_1p8']*1e6|.1f>>\\
+$g_{m1}/I_{D1}$ (V$^{-1}$) & <<FA['gmid1']|.0f>> & <<FB['gmid1']|.1f>> & <<D4['heavy']['gm_over_id1']|.1f>>\\
+$\lambda_{eff}$ of $M_2$ / $M_4$ (V$^{-1}$) & <<FA['lam2']|.3f>> / <<FA['lam4']|.3f>> & <<FB['lam2']|.3f>> / <<FB['lam4']|.3f>> & <<D4['heavy']['lam2']|.3f>> / <<D4['heavy']['lam4']|.3f>>\\
+$\Aea$ & <<FA['A_ea']|.0f>> & <<FB['A_ea']|.0f>> & <<D4['heavy']['A_ea']|.0f>>\\
+$G$ = PSRR$_{DC}$ (dB) & <<FA['psrr_dc_dB']|.1f>> & <<FB['psrr_dc_dB']|.1f>> & <<S4['psrr']['50mA']['dc']|.1f>>\\
+$\fu$ (kHz) & <<FA['fu']/1e3|.0f>> & <<FB['fu']/1e3|.0f>> & <<S4['loop']['50mA']['UGF']/1e3|.0f>>\\
+PM, $\RESR = 10$\,m$\Omega$ (deg) & -- & <<FB['PM_esr']|.1f>> & <<S4['loop']['50mA']['PM']|.1f>>\\
+PM, $\RESR = 0$ (deg) & -- & <<FB['PM_esr0']|.1f>> & <<S4['esr']['50mA'][0][1]|.1f>>\\
+Load regulation (mV) & <<FA['loadreg']*1e3|.1f>> & <<FB['loadreg']*1e3|.1f>> & <<S4['loadreg']['dV']*1e3|.1f>>\\
+$I_Q$ ($\mu$A) & -- & <<F['s8']['Iq']*1e6|.0f>> & <<S4['iq']['at_1p8']*1e6|.1f>>\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The formulas hold; the gap lies in two square-law inputs.
+Pass~A misses in two square-law inputs; the formulas themselves hold.
 \begin{enumerate}[label=(\roman*)]
 \item \emph{$g_m/I_D$.} The input pair works at $\ov \approx 0.08$\,V, in moderate inversion, where
 $g_m/I_D$ saturates toward $1/(nV_T)$ (Fig.~\ref{fig:gmid}) instead of following $2/\ov$. The simulated
-value is <<D3['heavy']['gm_over_id1']|.1f>> against 20, about $<<db(20/D3['heavy']['gm_over_id1'])|.1f>>$\,dB of gain.
+value is <<D4['heavy']['gm_over_id1']|.1f>> against 20, about $<<db(20/D4['heavy']['gm_over_id1'])|.1f>>$\,dB of gain.
 \item \emph{$\lambda$.} The extraction was done at $\ov = 0.2$\,V and $|V_{DS}| = 0.6$--1.2\,V. In the circuit,
-$M_2$ has a smaller $\ov$ and $M_4$ sits at $V_{DS} = <<D3['heavy']['vea']|.2f>>$\,V, close to saturation,
+$M_2$ has a smaller $\ov$ and $M_4$ sits at $V_{DS} = <<D4['heavy']['vea']|.2f>>$\,V, close to saturation,
 where $g_{ds}$ is larger. The effective $\lambda$ values are higher than the table values.
 \end{enumerate}
-When the simulated $g_m$ and $g_{ds}$ are put back into the formulas, $G$, $\fu$ and the load regulation
-match the simulation to within about 1\,dB, 7\,\% and 0.5\,mV. Because the hand $G$ was too high, the hand
-$\fu$ was too high too, and the hand PM was pessimistic.
+Pass~B puts the operating-point values into the same formulas and predicts the phase margin of v4 to
+within 1$^\circ$, the loop gain to within 1\,dB, $\fu$ to within <<abs(FB['fu']/S4['loop']['50mA']['UGF']-1)*100|.0f>>\,\% and the quiescent current to
+within 1\,$\mu$A. Because Pass~A overestimates $G$, it overestimates $\fu$ and finds no buffer current that reaches the
+PM target; the second pass is what makes the buffer sizing usable.
 
 The same mechanism affects the pass device. At full load $V_{SD} = 0.30$\,V is close to
-$V_{DS,sat} = <<-O3['heavy']['@mp[vdsat]'] if O3['heavy']['@mp[vdsat]']<0 else O3['heavy']['@mp[vdsat]']|.2f>>$\,V,
-so $g_{ds,P} = <<D3['heavy']['gdsp']*1e3|.0f>>$\,mS against $\lambda I = <<P['p_L0.18']['lam']*SP['IL_MAX']*1e3|.0f>>$\,mS. This lowers
-$R_o$ and the DC loop gain ($<<S3['loop']['50mA']['T0_dB']|.1f>>$\,dB simulated against
-$<<V3['heavy']['T0_dB']|.1f>>$\,dB by hand), but it does not move $\fu$, which is independent of $R_o$
+$V_{DS,sat} = <<-O4['heavy']['@mp[vdsat]'] if O4['heavy']['@mp[vdsat]']<0 else O4['heavy']['@mp[vdsat]']|.2f>>$\,V,
+so $g_{ds,P} = <<D4['heavy']['gdsp']*1e3|.0f>>$\,mS against $\lambda I = <<P['p_L0.18']['lam']*SP['IL_MAX']*1e3|.0f>>$\,mS. This lowers
+$R_o$ and the DC loop gain (<<S4['loop']['50mA']['T0_dB']|.1f>>\,dB simulated against
+<<V3['heavy']['T0_dB']|.1f>>\,dB by the square law), but it does not move $\fu$, which is independent of $R_o$
 (Proposition~\ref{T-prop:fu}).
 
 \subsection{Corners}\label{sec:corners}
@@ -397,17 +469,17 @@ The model file has no process corners, so the checks cover $\VIN$ and temperatur
 (script \texttt{sim\_extra.py}).
 \begin{itemize}[itemsep=0.2ex]
 \item \emph{Stability.} For $\VIN\in\{1.7,1.8,1.9\}$\,V, $T\in\{0,27,85\}\,^\circ$C and both load ends, the
-minimum PM is <<C3['pm_min']|.1f>>$^\circ$ at $\RESR = 10$\,m$\Omega$, and <<C3['pm_esr0_min']|.1f>>$^\circ$ with
-$\RESR = 0$ (at <<C3['pm_esr0_at']['vin']|.1f>>\,V, <<C3['pm_esr0_at']['temp']|d>>\,$^\circ$C).
-\item \emph{Output voltage.} $\VOUT$ stays within <<C3['vout_min']|.4f>>--<<C3['vout_max']|.4f>>\,V over all corners.
-\item \emph{PSRR, $\VIN\ge1.8$\,V.} The worst value is <<C3['psrr_nom_min']|.1f>>\,dB at
-<<C3['psrr_nom_min_at']['vin']|.1f>>\,V, <<C3['psrr_nom_min_at']['temp']|d>>\,$^\circ$C,
-<<C3['psrr_nom_min_at']['il']*1e3|.1f>>\,mA. This is just below the 30\,dB specification, which is stated
+minimum PM is <<C4['pm_min']|.1f>>$^\circ$ at $\RESR = 10$\,m$\Omega$, and <<C4['pm_esr0_min']|.1f>>$^\circ$ with
+$\RESR = 0$ (at <<C4['pm_esr0_at']['vin']|.1f>>\,V, <<C4['pm_esr0_at']['temp']|d>>\,$^\circ$C).
+\item \emph{Output voltage.} $\VOUT$ stays within <<C4['vout_min']|.4f>>--<<C4['vout_max']|.4f>>\,V over all corners.
+\item \emph{PSRR, $\VIN\ge1.8$\,V.} The worst value is <<C4['psrr_nom_min']|.1f>>\,dB at
+<<C4['psrr_nom_min_at']['vin']|.1f>>\,V, <<C4['psrr_nom_min_at']['temp']|d>>\,$^\circ$C,
+<<C4['psrr_nom_min_at']['il']*1e3|.1f>>\,mA. This is just below the 30\,dB specification, which is stated
 at the nominal point; the cause is the remaining headroom limit of Proposition~\ref{T-prop:window} at high $\VIN$.
 \item \emph{PSRR, $\VIN = 1.7$\,V.} At full load this is the dropout region, and the PSRR falls to
-<<C3['psrr_low_min']|.1f>>\,dB at 85\,$^\circ$C. Corollary~\ref{T-cor:dropout_psrr} explains it: at the
-27\,$^\circ$C dropout point, the simulated ratio $\gdsP/\gmP$ is already <<D3['dropout']['ratio']|.2f>>
-(against <<D3['heavy']['ratio']|.2f>> at 1.8\,V), and it grows further when hot. Datasheets specify PSRR
+<<C4['psrr_low_min']|.1f>>\,dB at 85\,$^\circ$C. Corollary~\ref{T-cor:dropout_psrr} explains it: at the
+27\,$^\circ$C dropout point, the simulated ratio $\gdsP/\gmP$ is already <<D4['dropout']['ratio']|.2f>>
+(against <<D4['heavy']['ratio']|.2f>> at 1.8\,V), and it grows further when hot. Datasheets specify PSRR
 with $\VIN$ well above $\VOUT+V_{DO}$ for this reason.
 \end{itemize}
 
@@ -433,13 +505,24 @@ redistributed there; place a BSIM3 model with \texttt{.model NMOS} and \texttt{.
 executable if it is not at the default path. Run from \texttt{scripts/}:
 \begin{enumerate}[itemsep=0.1ex]
 \item \texttt{python char\_devices.py}: device parameters (Table~\ref{tab:par}, Fig.~\ref{fig:gmid}).
-\item \texttt{python design.py}: hand design, writes \texttt{sizes\_v1/v2/v3.json} and \texttt{hand.json}.
-\item For each version: set \texttt{LDO\_SIZES=sizes\_vN.json} and \texttt{LDO\_VER=vN}, then run
+\item \texttt{python design.py}: earlier iterations, writes \texttt{sizes\_v1/v2/v3.json} and \texttt{hand.json}.
+\item For v1--v3: set \texttt{LDO\_SIZES=sizes\_vN.json} and \texttt{LDO\_VER=vN}, then run
 \texttt{sim\_op.py}, \texttt{sim\_all.py} and \texttt{sim\_extra.py}.
+\item \texttt{python design\_flow.py}: the procedure of Section~\ref{sec:hand} (Pass~B reads the v3 operating
+point), writes \texttt{sizes\_v4.json} and \texttt{hand\_flow.json}. Then run the three simulation scripts for v4.
 \item \texttt{python render.py <path-to-tectonic.exe>}: fills this document with the numbers and builds the PDF.
 \end{enumerate}
 The netlist is generated by \texttt{ldo\_netlist.py} from the sizes file. The repository folder
-\texttt{netlists/} holds the final circuit (v3) with its operating-point, loop-gain, PSRR and
+\texttt{netlists/} holds the final circuit (v4) with its operating-point, loop-gain, PSRR and
 load-step test benches; each runs directly with \texttt{ngspice\_con -b} once the model file is in place.
+
+\begin{thebibliography}{9}
+\bibitem{rm_thesis} G.~A.~Rinc\'on-Mora, \emph{Current Efficient, Low Voltage, Low Drop-Out Regulators},
+Ph.D.\ dissertation, Georgia Institute of Technology, 1996, Chapter~II and Section~6.1.
+Author's copy: \url{https://rincon-mora.gatech.edu/publicat/books/thesis/ldo_book.pdf}.
+\bibitem{rm_jssc} G.~A.~Rinc\'on-Mora and P.~E.~Allen, ``A low-voltage, low quiescent current, low drop-out
+regulator,'' \emph{IEEE J.\ Solid-State Circuits}, vol.~33, no.~1, pp.~36--44, Jan.\ 1998.
+Author's copy: \url{https://rincon-mora.gatech.edu/publicat/jrnls/jssc98_lv_ldo.pdf}.
+\end{thebibliography}
 
 \end{document}

@@ -1,7 +1,7 @@
 *** SPICE deck for cell ldo180{sch} from library ldo180
-*** Created on Thu Nov 05, 2026 22:22:50
-*** Last revised on Thu Nov 05, 2026 22:22:50
-*** Written on Thu Nov 05, 2026 22:22:50 by Electric VLSI Design System, version 9.08
+*** Created on Thu Nov 05, 2026 23:28:41
+*** Last revised on Thu Nov 05, 2026 23:28:41
+*** Written on Thu Nov 05, 2026 23:28:41 by Electric VLSI Design System, version 9.08
 *** Layout tech: mocmos, foundry MOSIS
 *** UC SPICE *** , MIN_RESIST 4.0, MIN_CAPAC 0.1FF
 *** Lambda Conversion ***
@@ -15,9 +15,9 @@ Mm2 ea vref tail tail PMOS L=1 W=81
 Mm3 d1 d1 gnd gnd NMOS L=3 W=25
 Mm4 ea d1 gnd gnd NMOS L=3 W=25
 Mm5 tail ibias vin vin PMOS L=1 W=40
-Mmb gnd ea g g PMOS L=0.5 W=12
+Mmb gnd ea g g PMOS L=0.5 W=8
 Mmbias ibias ibias vin vin PMOS L=1 W=5
-Mmbs g ibias vin vin PMOS L=1 W=30
+Mmbs g ibias vin vin PMOS L=1 W=20
 Mmp vout g vin vin PMOS L=0.18 W=10 M=300.0
 Rr1 vout fb 90k
 Rr2 fb gnd 60k

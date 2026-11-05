@@ -1,4 +1,4 @@
-* PSRR psrr_50mA
+* line_50mA
 .include cmos180.lib
 iref pb 0 5e-06
 mbias pb pb vin vin PMOS W=5e-06 L=1e-06 M=1 AD=2.5e-12 AS=2.5e-12 PD=1.1e-05 PS=1.1e-05
@@ -8,19 +8,19 @@ m2 ea vref tail tail PMOS W=8.1e-05 L=1e-06 M=1 AD=4.05e-11 AS=4.05e-11 PD=0.000
 m3 d1 d1 0 0 NMOS W=2.5e-05 L=3e-06 M=1 AD=1.25e-11 AS=1.25e-11 PD=5.1e-05 PS=5.1e-05
 m4 ea d1 0 0 NMOS W=2.5e-05 L=3e-06 M=1 AD=1.25e-11 AS=1.25e-11 PD=5.1e-05 PS=5.1e-05
 vref vref 0 0.6
-mbs g pb vin vin PMOS W=3e-05 L=1e-06 M=1 AD=1.5e-11 AS=1.5e-11 PD=6.1e-05 PS=6.1e-05
-mb 0 ea g g PMOS W=1.2e-05 L=5e-07 M=1 AD=6e-12 AS=6e-12 PD=2.5e-05 PS=2.5e-05
+mbs g pb vin vin PMOS W=2e-05 L=1e-06 M=1 AD=1e-11 AS=1e-11 PD=4.1e-05 PS=4.1e-05
+mb 0 ea g g PMOS W=8e-06 L=5e-07 M=1 AD=4e-12 AS=4e-12 PD=1.7e-05 PS=1.7e-05
 mp vout g vin vin PMOS W=1e-05 L=1.8e-07 M=300 AD=5e-12 AS=5e-12 PD=2.1e-05 PS=2.1e-05
 r1 vout fb 90000.0
 r2 fb 0 59999.99999999999
 cl vout nesr 2.2e-06
 resr nesr 0 0.01
 rshort fb fbi 1e-3
-vin vin 0 dc 1.8 ac 1
+vin vin 0 1.8
 il vout 0 0.05
+
 .control
-ac dec 50 1 1e8
-let p = -db(v(vout))
-wrdata psrr_50mA.txt p
+dc vin 1.4 2.0 0.002
+wrdata line_50mA.txt v(vout)
 .endc
 .end

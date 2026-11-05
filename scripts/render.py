@@ -28,10 +28,12 @@ P = J("params.json")
 HJ = J("hand.json")
 SP, H = HJ["spec"], HJ["common"]
 V1, V2, V3 = HJ["v1"], HJ["v2"], HJ["v3"]
-S1, S2, S3 = (J(f"sim_results_v{i}.json") for i in (1, 2, 3))
-O1, O2, O3 = (J(f"sim_op_v{i}.json") for i in (1, 2, 3))
-X2, X3 = J("sim_extra_v2.json"), J("sim_extra_v3.json")
-Z1, Z2, Z3 = (J(f"sizes_v{i}.json") for i in (1, 2, 3))
+F = J("hand_flow.json")              # design_flow.py: LDO design procedure (Rincon-Mora), final v4
+FA, FB = F["passA"], F["passB"]
+S1, S2, S3, S4 = (J(f"sim_results_v{i}.json") for i in (1, 2, 3, 4))
+O1, O2, O3, O4 = (J(f"sim_op_v{i}.json") for i in (1, 2, 3, 4))
+X2, X3, X4 = J("sim_extra_v2.json"), J("sim_extra_v3.json"), J("sim_extra_v4.json")
+Z1, Z2, Z3, Z4 = (J(f"sizes_v{i}.json") for i in (1, 2, 3, 4))
 
 
 def op(O, case, dev, par):
@@ -71,7 +73,8 @@ def derived(O, Hv, Z):
     return d
 
 
-D1, D2, D3 = derived(O1, V1, Z1), derived(O2, V2, Z2), derived(O3, V3, Z3)
+D1, D2, D3, D4 = (derived(O1, V1, Z1), derived(O2, V2, Z2), derived(O3, V3, Z3),
+                  derived(O4, None, Z4))
 
 
 def corner_stats(X):
@@ -90,11 +93,11 @@ def corner_stats(X):
                 vout_min=min(vouts), vout_max=max(vouts))
 
 
-C2, C3 = corner_stats(X2), corner_stats(X3)
+C2, C3, C4 = corner_stats(X2), corner_stats(X3), corner_stats(X4)
 
 
 def tau_fit():
-    """Recovery time constant after the load release (v3 run is the last one)."""
+    """Recovery time constant after the load release (the final v4 run is the last one)."""
     d = np.loadtxt(ROOT / "sim" / "tran.txt")
     t, v = d[:, 0], d[:, 1]
     v_end = v[-1]
@@ -106,11 +109,11 @@ def tau_fit():
 
 
 TAU = tau_fit()
-FU_LIGHT = S3["loop"]["0.1mA"]["UGF"]
+FU_LIGHT = S4["loop"]["0.1mA"]["UGF"]
 
-CTX = dict(math=math, np=np, P=P, SP=SP, H=H, V1=V1, V2=V2, V3=V3,
-           S1=S1, S2=S2, S3=S3, O1=O1, O2=O2, O3=O3, X2=X2, X3=X3,
-           D1=D1, D2=D2, D3=D3, C2=C2, C3=C3, Z1=Z1, Z2=Z2, Z3=Z3,
+CTX = dict(math=math, np=np, P=P, SP=SP, H=H, V1=V1, V2=V2, V3=V3, F=F, FA=FA, FB=FB,
+           S1=S1, S2=S2, S3=S3, S4=S4, O1=O1, O2=O2, O3=O3, O4=O4, X2=X2, X3=X3, X4=X4,
+           D1=D1, D2=D2, D3=D3, D4=D4, C2=C2, C3=C3, C4=C4, Z1=Z1, Z2=Z2, Z3=Z3, Z4=Z4,
            TAU=TAU, FU_LIGHT=FU_LIGHT,
            db=lambda x: 20 * math.log10(x), pi=math.pi)
 

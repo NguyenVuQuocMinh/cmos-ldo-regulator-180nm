@@ -56,9 +56,10 @@ This note derives, with proofs, every formula used to design the low-dropout (LD
 Fig.~\ref{fig:sch}. It covers the device equations (square law, triode region, weak inversion), the
 loop polarity, the static output equation (which gives accuracy, load and line regulation in one
 line), the pass-device and headroom conditions, the loop gain with its poles and zero, the unity-gain
-frequency and phase margin, the ESR window, the power-supply rejection and the load-step response.
-Part~2 (\texttt{ldo\_hand\_design.pdf}) applies these formulas to a specification to size every
-transistor and checks the result in ngspice.
+frequency and phase margin, the ESR window, the power-supply rejection, the load-step response and
+the worst-case load-step budget. Part~2 (\texttt{ldo\_hand\_design.pdf}) applies these formulas to a
+specification, following the system-level LDO design procedure of Rinc\'on-Mora
+\cite{rm_thesis,rm_jssc}, to size every transistor, and checks the result in ngspice.
 \end{abstract}
 
 \tableofcontents
@@ -439,8 +440,55 @@ For the 0.1\,$\leftrightarrow$\,50\,mA step, $\gmP$ itself changes by two orders
 \eqref{eq:step} is used piecewise. The final level comes from Corollary~\ref{cor:static}(b). The settling
 after a load \emph{release} is slow, because it ends at light load where $\omega_u$ is small:
 $\tau_{light} = 1/(2\pi f_{u,light})$. The gate must also slew up by $\Delta\VSGP$, but only with the bias
-current of $M_{BS}$, which takes $t_{slew} = C_G\Delta\VSGP/I_B$. In Part~2 this is below 0.1\,$\mu$s, far shorter than $\tau_{light}$.
+current of $M_{BS}$, which takes $t_{slew} = C_G\Delta\VSGP/I_B$. In Part~2 this is below 0.2\,$\mu$s, far shorter than $\tau_{light}$.
 \end{remark}
 
+The design procedure of Part~2 needs a bound that holds for a large step, before any linear model
+applies. It is the response-time budget of Rinc\'on-Mora \cite[Eqs.~(2.10)--(2.12)]{rm_thesis}; the
+statement and proof below are written for the circuit of Fig.~\ref{fig:sch}.
+
+\begin{proposition}[Worst-case load-step budget]\label{prop:budget}
+Let the load current rise by $\Delta I$ at $t = 0$. Let $\Delta t_1$ be the time after which $M_P$
+carries the full new load current, and assume that the current of $M_P$ does not fall during
+$0 \le t \le \Delta t_1$. Then the output excursion is bounded by
+\begin{equation}
+|\Delta\VOUT| \;\le\; \frac{\Delta I\,\Delta t_1}{\CL} + \Delta I\,\RESR, \label{eq:budget}
+\end{equation}
+and $\Delta t_1 \approx t_{loop} + t_{sr}$, where $t_{loop}$ is the reaction time of the loop and
+\begin{equation}
+t_{sr} = \frac{C_G\,\Delta\VSGP}{I_{sr}} \label{eq:tsr}
+\end{equation}
+is the time needed to move the gate of $M_P$ by $\Delta\VSGP$ when that node can be driven only with
+the current $I_{sr}$. On the single-pole part of the loop (Proposition~\ref{prop:step}) the limit of
+\eqref{eq:step} equals the first term of \eqref{eq:budget} with $t_{loop} = 1/(2\pi\fu)$. Reference
+\cite{rm_thesis} uses $t_{loop} = 1/BW_{cl}$ with $BW_{cl}\approx\fu$ in hertz, which is larger by $2\pi$
+and therefore more conservative.
+\end{proposition}
+\begin{proof}
+\begin{steps}
+\item The load current is $I_L+\Delta I$ for $t>0$. Let $i_P(t)$ be the extra current of $M_P$. KCL at the output: the capacitor branch delivers $i_C = \Delta I - i_P$ (the divider current changes by less than $\Delta\VOUT/(R_1+R_2)$, which is negligible).
+\item By assumption $0 \le i_P \le \Delta I$ on $[0,\Delta t_1]$ and $i_P = \Delta I$ afterwards (up to the static regulation term). Hence $0 \le i_C \le \Delta I$ on $[0,\Delta t_1]$ and $i_C = 0$ later.
+\item The capacitor loses the charge $\int_0^\infty i_C\,dt \le \Delta I\,\Delta t_1$, so its voltage falls by at most $\Delta I\,\Delta t_1/\CL$.
+\item The output is the capacitor voltage minus $i_C\RESR$, and $i_C \le \Delta I$. Adding this drop gives \eqref{eq:budget}.
+\item Before $i_P$ can reach $\Delta I$, $\VSGP$ must change by $\Delta\VSGP$ (the $I_D$--$V_{SG}$ curve of $M_P$). This takes the charge $C_G\Delta\VSGP$; with a drive current of at most $I_{sr}$ it takes at least \eqref{eq:tsr}, which adds to the reaction time of the loop.
+\item In the single-pole case, \eqref{eq:step} tends to $\Delta I/(\CL\omega_u)$ as $t\to\infty$, which is the first term of \eqref{eq:budget} with $\Delta t_1 = 1/\omega_u = 1/(2\pi\fu)$. \qedhere
+\end{steps}
+\end{proof}
+\begin{remark}[Direction of the slew limit]
+The buffer is class A \cite[Sec.~2.2]{rm_thesis}. When the load rises, $\VG$ must fall, and $M_B$
+pulls it down with a current that grows with its overdrive, so this direction is not slew limited.
+When the load is released, $\VG$ must rise, and only the bias current of $M_{BS}$ charges $C_G$:
+$I_{sr} = I_B$ in \eqref{eq:tsr}. The bound \eqref{eq:budget} applies to the release with the signs
+reversed.
+\end{remark}
+
+\begin{thebibliography}{9}
+\bibitem{rm_thesis} G.~A.~Rinc\'on-Mora, \emph{Current Efficient, Low Voltage, Low Drop-Out Regulators},
+Ph.D.\ dissertation, Georgia Institute of Technology, 1996, Chapter~II and Section~6.1.
+Author's copy: \url{https://rincon-mora.gatech.edu/publicat/books/thesis/ldo_book.pdf}.
+\bibitem{rm_jssc} G.~A.~Rinc\'on-Mora and P.~E.~Allen, ``A low-voltage, low quiescent current, low drop-out
+regulator,'' \emph{IEEE J.\ Solid-State Circuits}, vol.~33, no.~1, pp.~36--44, Jan.\ 1998.
+Author's copy: \url{https://rincon-mora.gatech.edu/publicat/jrnls/jssc98_lv_ldo.pdf}.
+\end{thebibliography}
 
 \end{document}

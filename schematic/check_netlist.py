@@ -2,11 +2,11 @@
 
 1. Netlist comparison: every device of Electric's netlist (ldo180_electric.spi,
    written by Electric from ldo180{sch}) against the Python netlist used for all
-   results (scripts/ldo_netlist.py with sizes_v3.json): terminals, model, W, L,
+   results (scripts/ldo_netlist.py with sizes_v4.json): terminals, model, W, L,
    M, R. Drain and source may be swapped (symmetric devices).
 2. Re-simulation with Electric's netlist: operating points, load and line
-   regulation, PSRR, load step and loop gain, compared with the published v3
-   numbers (scripts/sim_results_v3.json).
+   regulation, PSRR, load step and loop gain, compared with the published v4
+   numbers (scripts/sim_results_v4.json).
 
 Test-bench conventions (both flows):
   * Electric writes sizes in schematic units (um) with ".opt scale=0.2U"
@@ -27,12 +27,12 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT.parent / "scripts"))
-os.environ["LDO_SIZES"] = "sizes_v3.json"
+os.environ["LDO_SIZES"] = "sizes_v4.json"
 from spice import run, read           # noqa: E402
 import ldo_netlist                    # noqa: E402
 
 SPI = ROOT / "ldo180_electric.spi"
-REF = json.loads((ROOT.parent / "scripts" / "sim_results_v3.json").read_text())
+REF = json.loads((ROOT.parent / "scripts" / "sim_results_v4.json").read_text())
 NODEMAP = {"0": "gnd", "pb": "ibias", "fbi": "fb"}     # Python node -> Electric net
 
 
@@ -229,7 +229,7 @@ def main():
         tran_dip=res["tran_dip"],
         **{f"PM_{k}": v["PM"] for k, v in res["loop"].items()},
         **{f"T0_{k}": v["T0_dB"] for k, v in res["loop"].items()})
-    print(f"\n{'quantity':<18}{'published v3':>16}{'Electric netlist':>18}{'difference':>14}")
+    print(f"\n{'quantity':<18}{'published v4':>16}{'Electric netlist':>18}{'difference':>14}")
     for k in ref:
         print(f"{k:<18}{ref[k]:>16.6g}{got[k]:>18.6g}{got[k] - ref[k]:>14.3g}")
     (ROOT / "check_netlist.json").write_text(json.dumps(

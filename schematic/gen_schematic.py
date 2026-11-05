@@ -1,4 +1,4 @@
-"""Draw the 0.18 um LDO (final design v3) as an Electric schematic and export
+"""Draw the 0.18 um LDO (final design v4) as an Electric schematic and export
 Electric's own SPICE netlist of it.
 
 Cell ldo180{sch} in library schematic/ldo180.jelib: nine 4-terminal MOSFETs and
@@ -26,7 +26,7 @@ import subprocess
 
 ROOT = pathlib.Path(__file__).resolve().parent
 ELECTRIC = os.environ.get("ELECTRIC_JAR", r"C:\Electric\electricBinaryFull-9.08.jar")
-S = json.loads((ROOT.parent / "scripts" / "sizes_v3.json").read_text())
+S = json.loads((ROOT.parent / "scripts" / "sizes_v4.json").read_text())
 
 ORIENT = {  # code: (angle, flipX, flipY, port offsets, side of the label: +1 right, -1 left)
     "PL": (900, 0, 1, {"g": (-1, 0), "s": (2, 2), "d": (2, -2), "b": (2, 1)}, 1),
