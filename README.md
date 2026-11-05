@@ -10,9 +10,7 @@ Schematic of the final design (v4) in the Electric VLSI editor, cell `ldo180{sch
 [`schematic/ldo180.jelib`](schematic/ldo180.jelib). Labels give W/L in µm (×300 = number of parallel
 pass-device fingers, M = 300). Its netlist matches the simulated circuit device by device (see
 [Schematic in Electric](#schematic-in-electric)). The PDFs use a redrawn version of the same circuit
-([`figures/schematic.png`](figures/schematic.png)). *Note: this screenshot was taken before the v4 buffer
-change and still shows MB = 12/0.5 and MBS = 30/1; v4 uses MB = 8/0.5 and MBS = 20/1 (the `.jelib` file
-is already v4).*
+([`figures/schematic.png`](figures/schematic.png)).
 
 ## Documents
 
